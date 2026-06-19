@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cell Topology Monitor — 3000-Series Broker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B0E14;
+    --panel: #141925;
+    --panel-border: #232B3D;
+    --teal: #5EEAD4;
+    --amber: #FBBF24;
+    --red: #F87171;
+    --blue: #60A5FA;
+    --text: #E4E8F0;
+    --text-muted: #8B95A8;
+    --text-faint: #4D5670;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 32px 24px 64px;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    max-width: 1100px;
+    margin: 0 auto 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+
+  .header .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .conn-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text-faint);
+    transition: all 0.3s;
+  }
+  .conn-dot.live { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+
+  .sim-badge {
+    max-width: 1100px;
+    margin: 0 auto 28px;
+    font-size: 12px;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stats {
+    max-width: 1100px;
+    margin: 0 auto 32px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .stat-box {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  /* ---- Topology ---- */
+  .topology {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    position: relative;
+    height: 320px;
+  }
+
+  svg.links {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  .link-line {
+    stroke-width: 2;
+    fill: none;
+    transition: stroke 0.4s ease;
+  }
+  .link-line.Online { stroke: var(--teal); }
+  .link-line.Idle { stroke: var(--amber); stroke-dasharray: 6 6; }
+  .link-line.Detached { stroke: var(--red); stroke-dasharray: 3 5; opacity: 0.5; }
+  .link-line.NoData { stroke: var(--text-faint); stroke-dasharray: 2 6; opacity: 0.4; }
+
+  .link-pulse {
+    fill: var(--teal);
+    opacity: 0;
+  }
+  .link-pulse.active {
+    animation: travel 1.6s linear infinite;
+  }
+
+  @keyframes travel {
+    0%   { offset-distance: 0%; opacity: 0; }
+    8%   { opacity: 1; }
+    92%  { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0; }
+  }
+
+  .tower {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 160px;
+  }
+
+  .tower-icon {
+    width: 56px; height: 56px;
+    margin: 0 auto 8px;
+    color: var(--text);
+  }
+
+  .tower-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .tower-sub {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .broker-badge {
+    position: absolute;
+    top: 130px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    z-index: 2;
+  }
+
+  .ue-node {
+    position: absolute;
+    top: 230px;
+    width: 130px;
+    text-align: center;
+  }
+
+  .ue-icon-wrap {
+    width: 44px; height: 44px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+  .ue-icon-wrap.Online { border-color: var(--teal); box-shadow: 0 0 14px rgba(94,234,212,0.35); }
+  .ue-icon-wrap.Idle { border-color: var(--amber); box-shadow: 0 0 14px rgba(251,191,36,0.25); }
+  .ue-icon-wrap.Detached { border-color: var(--red); }
+  .ue-icon-wrap.NoData { border-color: var(--text-faint); }
+
+  .ue-icon-wrap svg { width: 20px; height: 20px; }
+  .ue-icon-wrap.Online svg { color: var(--teal); }
+  .ue-icon-wrap.Idle svg { color: var(--amber); }
+  .ue-icon-wrap.Detached svg { color: var(--red); }
+  .ue-icon-wrap.NoData svg { color: var(--text-faint); }
+
+  .ue-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .ue-ip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-top: 1px;
+  }
+
+  .ue-status-pill {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .ue-status-pill.Online { background: rgba(94,234,212,0.12); color: var(--teal); }
+  .ue-status-pill.Idle { background: rgba(251,191,36,0.12); color: var(--amber); }
+  .ue-status-pill.Detached { background: rgba(248,113,113,0.1); color: var(--red); }
+  .ue-status-pill.NoData { background: rgba(139,149,168,0.12); color: var(--text-muted); }
+
+  /* ---- Cards ---- */
+  .cards {
+    max-width: 1100px;
+    margin: 0 auto 32px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .card-sub {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    margin: 12px 0 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--panel-border);
+  }
+
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+
+  .metric-name { color: var(--text-muted); }
+
+  .metric-val {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+  }
+
+  .metric-num { font-weight: 600; }
+
+  .metric-unit {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-left: 3px;
+  }
+
+  .metric-desc {
+    font-size: 10px;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+
+  .desc-Excellent, .desc-Good, .desc-Clean, .desc-Active, .desc-OK, .desc-Low {
+    background: rgba(94,234,212,0.12); color: var(--teal);
+  }
+  .desc-Fair, .desc-Moderate, .desc-Elevated {
+    background: rgba(251,191,36,0.12); color: var(--amber);
+  }
+  .desc-Weak, .desc-High, .desc-Idle, .desc-Detached, .desc-Critical {
+    background: rgba(248,113,113,0.1); color: var(--red);
+  }
+
+  .empty-metrics {
+    color: var(--text-faint);
+    font-size: 12px;
+    font-style: italic;
+    padding: 12px 0;
+  }
+
+  /* ---- Sparkline ---- */
+  .sparkline-container {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--panel-border);
+  }
+  .sparkline-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  .sparkline-svg {
+    width: 100%;
+    height: 40px;
+  }
+
+  /* ---- Controls ---- */
+  .controls {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .ctrl-btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover { border-color: var(--text-muted); }
+  .ctrl-btn.primary { border-color: var(--teal); color: var(--teal); }
+  .ctrl-btn.primary:hover { background: rgba(94,234,212,0.08); }
+
+  .export-status {
+    font-size: 12px;
+    color: var(--teal);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Cell Topology Monitor</h1>
+  <div class="meta">
+    <span class="conn-dot" id="connDot"></span>
+    <span id="connLabel">connecting...</span>
+  </div>
+</div>
+
+<div class="sim-badge">3000-series broker topology · 1 eNB · 3 UEs · ZMQ + GNU Radio</div>
+
+<div class="stats">
+  <div class="stat-box">
+    <div class="stat-label">UEs Attached</div>
+    <div class="stat-value" id="statAttached">— / 3</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">UEs Online</div>
+    <div class="stat-value" id="statOnline">— / 3</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Samples</div>
+    <div class="stat-value" id="statSamples">—</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Uptime</div>
+    <div class="stat-value" id="statElapsed">—</div>
+  </div>
+</div>
+
+<div class="topology" id="topology">
+  <svg class="links" id="linksSvg"></svg>
+  <div class="tower">
+    <svg class="tower-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 2L4 22M12 2l8 20M9 14h6M7.5 18h9" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="2" r="1.4" fill="currentColor" stroke="none"/>
+    </svg>
+    <div class="tower-label" id="towerLabel">eNB1</div>
+    <div class="tower-sub" id="towerSub">PCI 1 · EARFCN 2850 · 50 PRB</div>
+  </div>
+  <div class="broker-badge">GRC BROKER</div>
+  <div id="ueNodes"></div>
+</div>
+
+<div class="cards" id="cards"></div>
+
+<div class="controls">
+  <button class="ctrl-btn primary" id="exportBtn">⬇ Export dataset</button>
+  <span class="export-status" id="exportStatus"></span>
+</div>
+
+<script>
+const PHONE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+  <rect x="6" y="2" width="12" height="20" rx="2.5" stroke-linejoin="round"/>
+  <line x1="10" y1="18.5" x2="14" y2="18.5" stroke-linecap="round"/>
+</svg>`;
+
+// State
+let snapshot = null;
+let ws = null;
+let wsConnected = false;
+let snrHistory = { ue1: [], ue2: [], ue3: [] };
+const SNR_HISTORY_MAX = 60;
+
+// WS connection
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => {
+    wsConnected = true;
+    document.getElementById('connDot').className = 'conn-dot live';
+    document.getElementById('connLabel').textContent = 'live';
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'snapshot') {
+      snapshot = msg.data;
+      // Track SNR history
+      for (const ue of snapshot.ues) {
+        const snr = ue.rf?.dl_snr?.value;
+        if (!snrHistory[ue.id]) snrHistory[ue.id] = [];
+        snrHistory[ue.id].push(snr || 0);
+        if (snrHistory[ue.id].length > SNR_HISTORY_MAX) snrHistory[ue.id].shift();
+      }
+      render(snapshot);
+    }
+  };
+
+  ws.onclose = () => {
+    wsConnected = false;
+    document.getElementById('connDot').className = 'conn-dot';
+    document.getElementById('connLabel').textContent = 'disconnected';
+    setTimeout(connectWS, 2000);
+  };
+
+  ws.onerror = () => { ws.close(); };
+}
+
+// Fallback polling if WS fails
+async function poll() {
+  if (wsConnected) return;
+  try {
+    const res = await fetch('/api/status');
+    snapshot = await res.json();
+    render(snapshot);
+  } catch (e) {}
+}
+
+function fmtElapsed(s) {
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
+  return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+}
+
+function fmtBrate(bps) {
+  if (!bps || bps <= 0) return '0';
+  if (bps >= 1e6) return (bps / 1e6).toFixed(1) + ' Mbps';
+  if (bps >= 1e3) return (bps / 1e3).toFixed(1) + ' kbps';
+  return bps.toFixed(0) + ' bps';
+}
+
+function statusCls(status) {
+  if (status === 'Online') return 'Online';
+  if (status === 'Idle') return 'Idle';
+  if (status === 'Detached') return 'Detached';
+  return 'NoData';
+}
+
+function render(snap) {
+  if (!snap) return;
+  renderStats(snap);
+  renderTopology(snap);
+  renderCards(snap);
+}
+
+function renderStats(snap) {
+  document.getElementById('statAttached').textContent = `${snap.summary.ues_attached} / ${snap.summary.ues_total}`;
+  document.getElementById('statOnline').textContent = `${snap.summary.ues_online} / ${snap.summary.ues_total}`;
+  document.getElementById('statSamples').textContent = snap.sample_count.toLocaleString();
+  document.getElementById('statElapsed').textContent = fmtElapsed(snap.elapsed_s);
+}
+
+function renderTopology(snap) {
+  const width = document.getElementById('topology').clientWidth;
+  const towerPx = { x: width * 0.5, y: 66 };
+  const brokerY = 150;
+  const nodeY = 250;
+  const positions = [0.18, 0.5, 0.82];
+
+  // UE nodes
+  const nodesEl = document.getElementById('ueNodes');
+  nodesEl.innerHTML = '';
+  snap.ues.forEach((ue, i) => {
+    const cls = statusCls(ue.status);
+    const div = document.createElement('div');
+    div.className = 'ue-node';
+    div.style.left = `calc(${positions[i] * 100}% - 65px)`;
+    div.innerHTML = `
+      <div class="ue-icon-wrap ${cls}">${PHONE_SVG}</div>
+      <div class="ue-label">${ue.label}</div>
+      <div class="ue-ip">${ue.ip || '—'}</div>
+      <div class="ue-status-pill ${cls}">${ue.status}</div>
+    `;
+    nodesEl.appendChild(div);
+  });
+
+  // Links: tower → broker → UEs
+  const svg = document.getElementById('linksSvg');
+  svg.innerHTML = '';
+
+  // Tower to broker (always teal if enb is up)
+  const brokerPx = { x: width * 0.5, y: brokerY };
+  const tbLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  tbLine.setAttribute('x1', towerPx.x); tbLine.setAttribute('y1', towerPx.y);
+  tbLine.setAttribute('x2', brokerPx.x); tbLine.setAttribute('y2', brokerPx.y);
+  tbLine.setAttribute('class', 'link-line Online');
+  svg.appendChild(tbLine);
+
+  // Broker to each UE
+  snap.ues.forEach((ue, i) => {
+    const cls = statusCls(ue.status);
+    const nodePx = { x: width * positions[i], y: nodeY };
+    const midX = (brokerPx.x + nodePx.x) / 2;
+    const midY = (brokerPx.y + nodePx.y) / 2 - 15;
+    const d = `M ${brokerPx.x} ${brokerPx.y} Q ${midX} ${midY} ${nodePx.x} ${nodePx.y}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', `link-line ${cls}`);
+    svg.appendChild(path);
+
+    if (cls === 'Online') {
+      const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      pulse.setAttribute('r', '3.5');
+      pulse.setAttribute('class', 'link-pulse active');
+      pulse.style.offsetPath = `path('${d}')`;
+      pulse.style.offsetRotate = '0deg';
+      svg.appendChild(pulse);
+    }
+  });
+}
+
+function metricRow(label, m) {
+  if (!m || m.value === null || m.value === undefined) return '';
+  const val = typeof m.value === 'number' ? (m.value >= 1000 ? fmtBrate(m.value) : m.value) : m.value;
+  const showUnit = typeof m.value === 'number' && m.value < 1000 && m.unit;
+  const descHtml = m.descriptor
+    ? `<span class="metric-desc desc-${m.descriptor}">${m.descriptor}</span>`
+    : '';
+  return `
+    <div class="metric-row">
+      <span class="metric-name">${label}</span>
+      <span class="metric-val">
+        <span class="metric-num">${val}</span>
+        ${showUnit ? `<span class="metric-unit">${m.unit}</span>` : ''}
+        ${descHtml}
+      </span>
+    </div>`;
+}
+
+function sparklineSVG(data, color) {
+  if (!data || data.length < 2) return '';
+  const w = 260, h = 36;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+  return `<svg class="sparkline-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function renderCards(snap) {
+  const container = document.getElementById('cards');
+  container.innerHTML = '';
+
+  snap.ues.forEach(ue => {
+    const cls = statusCls(ue.status);
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    let body = '';
+
+    if (ue.status === 'No Data') {
+      body = '<div class="empty-metrics">No metrics data — UE not started or CSV not found</div>';
+    } else {
+      // RF metrics
+      if (ue.rf) {
+        body += '<div class="section-label">RF Link</div>';
+        body += metricRow('RSRP', ue.rf.rsrp);
+        body += metricRow('DL SNR', ue.rf.dl_snr);
+        body += metricRow('DL MCS', ue.rf.dl_mcs);
+        body += metricRow('UL MCS', ue.rf.ul_mcs);
+        body += metricRow('DL BLER', ue.rf.dl_bler);
+        body += metricRow('UL BLER', ue.rf.ul_bler);
+        body += metricRow('CFO', ue.rf.cfo);
+      }
+
+      // Throughput
+      if (ue.throughput) {
+        body += '<div class="section-label">Throughput</div>';
+        body += metricRow('Downlink', ue.throughput.dl_brate);
+        body += metricRow('Uplink', ue.throughput.ul_brate);
+      }
+
+      // Process
+      if (ue.process) {
+        body += '<div class="section-label">System</div>';
+        body += metricRow('CPU (per-core avg)', ue.process.cpu_normalized);
+        body += metricRow('CPU (system total)', ue.process.cpu_total);
+        body += metricRow('Process Memory', ue.process.proc_mem_mb);
+        body += metricRow('System Memory', ue.process.sys_mem);
+      }
+
+      // SNR sparkline
+      const hist = snrHistory[ue.id];
+      if (hist && hist.length > 2) {
+        body += `
+          <div class="sparkline-container">
+            <div class="sparkline-label">DL SNR (last ${hist.length}s)</div>
+            ${sparklineSVG(hist, '#5EEAD4')}
+          </div>`;
+      }
+    }
+
+    card.innerHTML = `
+      <div class="card-head">
+        <div>
+          <div class="card-title">${ue.label}</div>
+          <div class="card-sub">IMSI ${ue.imsi} · ${ue.ip || '—'}</div>
+        </div>
+        <span class="ue-status-pill ${cls}">${ue.status}</span>
+      </div>
+      ${body}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Export
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/api/export');
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cell-metrics-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    document.getElementById('exportStatus').textContent = 'Exported ✓';
+    setTimeout(() => { document.getElementById('exportStatus').textContent = ''; }, 3000);
+  } catch (e) {
+    document.getElementById('exportStatus').textContent = 'Export failed';
+  }
+});
+
+// Init
+connectWS();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>
