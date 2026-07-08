@@ -1,5 +1,12 @@
 /*
- * broker.cpp — Aligned Lossless-FIFO REQ/REP Broker for srsRAN 4G  (v3)
+ * broker.cpp — Windowed Mixer + Gain + Noise Injection (v7)
+ *
+ * v7 = v6 with noise cap raised 10.0 → 2000.0. Measured calibration
+ * (v5/v6 sweeps): signal amplitude A ≈ 3000, so
+ *     SNR ≈ 20·log10(gain·3000 / sigma)
+ * Link-degrading sigma therefore lives in the hundreds:
+ *     sigma 30→~40dB, 300→~20dB, 950→~10dB, 1500→~6dB
+ * The old 10.0 cap couldn't reach any of it.
  *
  * Compile:
  *   g++ -std=c++17 -O2 -o broker broker.cpp -lzmq -lpthread
@@ -7,51 +14,40 @@
  * REQUIRES: srsRAN patched (rf_zmq_imp.c: goto clean_exit → num_tx_gap_samples = 0)
  * REQUIRES: REQ/REP configs (no tx_type/rx_type in device_args)
  *
- * ─────────────────────────────────────────────────────────────────
- * v3: DETERMINISTIC SAMPLE-TIMELINE ALIGNMENT
- * ─────────────────────────────────────────────────────────────────
- * v2 made both directions lossless FIFOs (every chunk, once, in
- * order). Result: SIB2 decode became deterministic and the UE fired
- * 10 clean PRACH attempts, every one delivered fresh and in-order —
- * but the eNB never answered with a RAR.
+ * v6 = v5 plus PER-UE GAUSSIAN NOISE INJECTION.
  *
- * Why: srsRAN's ZMQ driver starts TX and RX sample counters at zero
- * AT DRIVER OPEN, on both ends. The UE self-aligns its TX stream to
- * its RX stream (its own tx_align); it places PRACH at a TX sample
- * index aligned to the DL subframe timing it decoded. The eNB
- * searches PRACH only at configured occasions in ITS OWN UL sample
- * timeline. Detection therefore requires:
+ * Why (empirical, from the v5 gain sweep): srsRAN's ZMQ channel is
+ * noiseless. Gain scaling moves RSRP exactly (20·log10(g), verified
+ * 1.0→0.05 = −26dB) but SNR stays pinned (~141dB), MCS never moves,
+ * BLER stays 0 — no noise floor means amplitude cannot degrade link
+ * QUALITY, only measured power, until a hard decode cliff. So:
  *
- *     UE_i TX chunk j  →  eNB UL serve (ul_align_i + j)
- *     where ul_align_i = absolute DL chunk seq of the FIRST chunk
- *                        the broker served to UE_i
+ *   gain  = calibrated power lever (RSRP shift, observability, kill)
+ *   noise = degradation primitive (SNR becomes a controlled quantity)
  *
- * (Both counters tick 1 chunk = 11520 samples = 1 subframe.)
+ * Per UE, per direction: independent noise amplitude sigma (std dev
+ * per complex component's magnitude scale — see table note below).
+ * Applied at serve time only; queues stay clean; alignment invariant
+ * untouched (noise adds, never shifts samples).
  *
- * v1/v2 never enforced this — UE chunk 0 landed on whatever serve
- * the eNB happened to be on. PRACH occasions repeat every 10ms, so
- * detection was luck modulo 10: explains v1-run1 detecting
- * preambles, v1-run2 not RACHing usefully, v2 sending 10 preambles
- * into the void.
+ *   DL: ue_i's served chunk becomes  gain_i·x[n] + sigma_i·w[n]
+ *   UL: ue_i's window contribution becomes gain_i·x[n] + sigma_i·w[n]
+ *       (noise contributes even at gain=0 → "uplink contamination"
+ *        fault: a UE slot emitting pure noise into the composite)
  *
- * v3 rules:
- *   A. Record ul_align[i] when UE_i receives its first DL chunk.
- *   B. Tag every UL chunk from UE_i with its arrival index j.
- *      Serve number m includes UE_i's chunk iff j == m - ul_align[i].
- *   C. If UE_i's due chunk hasn't arrived, HOLD the eNB's reply
- *      (REP permits this; the eNB's async RX thread just blocks,
- *      same as against GRC). NEVER zero-insert while a UE is active:
- *      one insertion shifts the mapping by a subframe forever.
- *   D. Before any UE is active, timeout zero-fill (DEFER_MS) keeps
- *      the eNB clocked, exactly as v2.
- *   E. If an active UE stalls > UE_DEAD_MS, mark it inactive (its
- *      slot contributes zeros; alignment of others is unaffected).
+ * Noise source: precomputed 1M-sample circular table of complex
+ * Gaussian (unit average power per complex sample: each component
+ * N(0, 1/√2)), consumed with a running offset. Statistically ample
+ * for driving a decoder; avoids per-sample RNG cost on the hot path.
  *
- * DL side unchanged from v2: shared FIFO + per-UE cursor, every
- * chunk exactly once, in order, held REQ when at live edge.
+ * Control (TCP 127.0.0.1:4000, JSON lines), v5 commands plus:
+ *   {"cmd":"set_noise","ue":2,"dir":"dl","value":0.01}
+ *   {"cmd":"reset"}      -> gains 1.0 AND noise 0.0
+ *   {"cmd":"status"}     -> now includes dl_noise/ul_noise
  *
- * Protocol: 0xFF REQ (1 byte), IQ samples REP.
- * ─────────────────────────────────────────────────────────────────
+ * Calibration: signal sample amplitude is srsRAN-internal, so map
+ * sigma→SNR empirically: sweep sigma at gain 1.0 and log dl_snr.
+ * (Sweep script in the accompanying instructions.)
  */
 
 #include <zmq.hpp>
@@ -64,22 +60,33 @@
 #include <csignal>
 #include <cmath>
 #include <cerrno>
+#include <cstdint>
+#include <atomic>
+#include <thread>
+#include <string>
+#include <sstream>
+#include <random>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 static volatile bool g_running = true;
 static void sig_handler(int) { g_running = false; }
 
-static const uint8_t REQ_BYTE = 0xFF;
-static const int NUM_UES      = 3;
-static const int POLL_MS      = 1;
-static const size_t SAMP_SZ   = sizeof(std::complex<float>);
+static const uint8_t REQ_BYTE   = 0xFF;
+static const int     NUM_UES    = 3;
+static const int     POLL_MS    = 1;
+static const size_t  SAMP_SZ    = sizeof(std::complex<float>);
 
-static const size_t DL_Q_MAX  = 256;
-static const size_t UL_Q_MAX  = 256;
+static const uint64_t WIN_SAMPS = 11520;
+static const int      DEFER_MS  = 8;
+static const int      LIVE_MS   = 1000;
+static const uint64_t UL_MAX_SAMPS = 11520ull * 500;
+static const size_t   DL_Q_MAX     = 256;
+static const int      CTRL_PORT    = 4000;
 
-/* Zero-fill timeout — applies ONLY while no UE is active. */
-static const int DEFER_MS     = 5;
-/* An active UE silent this long is declared dead (stops being waited on). */
-static const int UE_DEAD_MS   = 200;
+static const size_t NOISE_TABLE_SAMPS = 1u << 20;   /* ~1M complex */
 
 /* ── Instrumentation ── */
 static const size_t RING_MAX         = 100;
@@ -89,53 +96,282 @@ static const float  BURST_OFF_THRESH = 0.01f;
 
 using clk = std::chrono::steady_clock;
 
+/* ── Runtime controls ── */
+static std::atomic<float> g_dl_gain[NUM_UES];
+static std::atomic<float> g_ul_gain[NUM_UES];
+static std::atomic<float> g_dl_noise[NUM_UES];
+static std::atomic<float> g_ul_noise[NUM_UES];
+
+/* ── Noise table ── */
+static std::vector<std::complex<float>> g_noise;
+static size_t g_noise_off_dl[NUM_UES] = {0, 0, 0};
+static size_t g_noise_off_ul[NUM_UES] = {0, 0, 0};
+
+static void init_noise_table() {
+    std::mt19937 rng(0xC0FFEE);
+    std::normal_distribution<float> nd(0.f, 0.70710678f); /* 1/sqrt(2) */
+    g_noise.resize(NOISE_TABLE_SAMPS);
+    for (auto& v : g_noise) v = {nd(rng), nd(rng)};
+    /* stagger per-UE start offsets so streams are uncorrelated */
+    for (int i = 0; i < NUM_UES; i++) {
+        g_noise_off_dl[i] = (i * 2 + 1) * (NOISE_TABLE_SAMPS / 7);
+        g_noise_off_ul[i] = (i * 2 + 2) * (NOISE_TABLE_SAMPS / 7);
+    }
+}
+
+static inline void add_noise(std::complex<float>* buf, size_t n,
+                             float sigma, size_t& off) {
+    if (sigma <= 0.f) return;
+    for (size_t j = 0; j < n; j++) {
+        buf[j] += g_noise[off] * sigma;
+        off = (off + 1) & (NOISE_TABLE_SAMPS - 1);
+    }
+}
+
 static void send_req(zmq::socket_t& sock) {
     zmq::message_t req(1);
     memcpy(req.data(), &REQ_BYTE, 1);
     sock.send(req);
 }
 
-static float buf_energy(const std::vector<uint8_t>& buf) {
-    size_t n = buf.size() / SAMP_SZ;
-    if (n == 0) return 0.f;
-    auto* s = reinterpret_cast<const std::complex<float>*>(buf.data());
-    float e = 0.f;
-    for (size_t j = 0; j < n; j++) e += std::norm(s[j]);
-    return e;
-}
-
-struct UlChunk {
-    uint64_t idx;                    /* arrival index j for this UE */
-    std::vector<uint8_t> data;
-};
-
 struct UlEvent {
-    uint64_t serve_n;
-    char     kind;                   /* 'F' aligned data, 'Z' pre-UE zero */
+    uint64_t win_start;
+    bool     timed_out;
     bool     deferred;
     float    energy[NUM_UES];
-    long     lag[NUM_UES];           /* due_j - front_j (0 = perfect) */
+    uint64_t backlog[NUM_UES];
 };
 
 static void print_event(const UlEvent& ev) {
-    printf("s=%-8lu %c%s ue1[e=%12.2f l=%ld] ue2[e=%12.2f l=%ld] ue3[e=%12.2f l=%ld]\n",
-           (unsigned long)ev.serve_n, ev.kind, ev.deferred ? "d" : " ",
-           ev.energy[0], ev.lag[0],
-           ev.energy[1], ev.lag[1],
-           ev.energy[2], ev.lag[2]);
+    printf("S=%-10lu %s%s ue1[e=%12.2f b=%lu] ue2[e=%12.2f b=%lu] ue3[e=%12.2f b=%lu]\n",
+           (unsigned long)ev.win_start,
+           ev.timed_out ? "T" : "F",
+           ev.deferred ? "d" : " ",
+           ev.energy[0], (unsigned long)ev.backlog[0],
+           ev.energy[1], (unsigned long)ev.backlog[1],
+           ev.energy[2], (unsigned long)ev.backlog[2]);
+}
+
+struct UlStream {
+    std::deque<std::vector<uint8_t>> q;
+    size_t   front_off    = 0;
+    uint64_t abs_pos      = 0;
+    uint64_t align_samp   = 0;
+    uint64_t rx_samples   = 0;
+    uint64_t late_dropped = 0;
+    uint64_t ovf_dropped  = 0;
+    bool     started      = false;
+    bool     anchored     = false;
+    clk::time_point last_rx;
+
+    uint64_t end_abs() const { return align_samp + rx_samples; }
+    uint64_t backlog() const { return end_abs() - abs_pos; }
+
+    uint64_t drop_until(uint64_t upto) {
+        uint64_t dropped = 0;
+        while (abs_pos < upto && !q.empty()) {
+            uint64_t have = (q.front().size() - front_off) / SAMP_SZ;
+            uint64_t need = upto - abs_pos;
+            uint64_t take = have < need ? have : need;
+            front_off += take * SAMP_SZ;
+            abs_pos   += take;
+            dropped   += take;
+            if (front_off >= q.front().size()) { q.pop_front(); front_off = 0; }
+        }
+        return dropped;
+    }
+
+    float mix_window(uint64_t S, uint64_t n, std::complex<float>* out,
+                     float gain) {
+        float energy = 0.f;
+        late_dropped += drop_until(S);
+        while (abs_pos < S + n && !q.empty()) {
+            uint64_t have = (q.front().size() - front_off) / SAMP_SZ;
+            if (have == 0) { q.pop_front(); front_off = 0; continue; }
+            uint64_t off_in_win = abs_pos - S;
+            uint64_t room = (S + n) - abs_pos;
+            uint64_t take = have < room ? have : room;
+            auto* s = reinterpret_cast<const std::complex<float>*>(
+                q.front().data() + front_off);
+            if (gain != 0.f) {
+                for (uint64_t j = 0; j < take; j++) {
+                    std::complex<float> v = s[j] * gain;
+                    out[off_in_win + j] += v;
+                    energy += std::norm(v);
+                }
+            }
+            front_off += take * SAMP_SZ;
+            abs_pos   += take;
+            if (front_off >= q.front().size()) { q.pop_front(); front_off = 0; }
+        }
+        return energy;
+    }
+};
+
+/* ── Control server ── */
+static bool json_get_str(const std::string& s, const std::string& key,
+                         std::string& out) {
+    auto k = s.find("\"" + key + "\"");
+    if (k == std::string::npos) return false;
+    auto c = s.find(':', k);
+    if (c == std::string::npos) return false;
+    auto q1 = s.find('"', c + 1);
+    if (q1 == std::string::npos) return false;
+    auto q2 = s.find('"', q1 + 1);
+    if (q2 == std::string::npos) return false;
+    out = s.substr(q1 + 1, q2 - q1 - 1);
+    return true;
+}
+
+static bool json_get_num(const std::string& s, const std::string& key,
+                         double& out) {
+    auto k = s.find("\"" + key + "\"");
+    if (k == std::string::npos) return false;
+    auto c = s.find(':', k);
+    if (c == std::string::npos) return false;
+    try { out = std::stod(s.substr(c + 1)); } catch (...) { return false; }
+    return true;
+}
+
+static UlStream* g_ul_view = nullptr;
+
+static std::string handle_ctrl_line(const std::string& line) {
+    std::string cmd;
+    if (!json_get_str(line, "cmd", cmd))
+        return "{\"ok\":false,\"err\":\"no cmd\"}\n";
+
+    if (cmd == "set_gain" || cmd == "set_noise") {
+        double ue_d = 0, val = -1;
+        std::string dir;
+        if (!json_get_num(line, "ue", ue_d) ||
+            !json_get_str(line, "dir", dir) ||
+            !json_get_num(line, "value", val))
+            return "{\"ok\":false,\"err\":\"need ue, dir, value\"}\n";
+        int ue = (int)ue_d - 1;
+        if (ue < 0 || ue >= NUM_UES)
+            return "{\"ok\":false,\"err\":\"ue out of range\"}\n";
+        bool is_gain = (cmd == "set_gain");
+        if (is_gain && (val < 0.0 || val > 1.0))
+            return "{\"ok\":false,\"err\":\"gain must be 0.0-1.0\"}\n";
+        if (!is_gain && (val < 0.0 || val > 2000.0))
+            return "{\"ok\":false,\"err\":\"noise must be 0.0-2000.0\"}\n";
+        std::atomic<float>* target = nullptr;
+        if (dir == "dl") target = is_gain ? &g_dl_gain[ue] : &g_dl_noise[ue];
+        else if (dir == "ul") target = is_gain ? &g_ul_gain[ue] : &g_ul_noise[ue];
+        else return "{\"ok\":false,\"err\":\"dir must be dl|ul\"}\n";
+        target->store((float)val);
+        printf("[ctrl] ue%d %s %s -> %.4f\n", ue + 1, dir.c_str(),
+               is_gain ? "gain" : "noise", val);
+        return "{\"ok\":true}\n";
+    }
+
+    if (cmd == "kill") {
+        double ue_d = 0;
+        if (!json_get_num(line, "ue", ue_d))
+            return "{\"ok\":false,\"err\":\"need ue\"}\n";
+        int ue = (int)ue_d - 1;
+        if (ue < 0 || ue >= NUM_UES)
+            return "{\"ok\":false,\"err\":\"ue out of range\"}\n";
+        g_dl_gain[ue].store(0.f);
+        g_ul_gain[ue].store(0.f);
+        printf("[ctrl] ue%d SOFT-KILLED (dl=ul gain=0.0)\n", ue + 1);
+        return "{\"ok\":true,\"note\":\"soft kill: dl=ul gain 0.0\"}\n";
+    }
+
+    if (cmd == "reset") {
+        for (int i = 0; i < NUM_UES; i++) {
+            g_dl_gain[i].store(1.f);
+            g_ul_gain[i].store(1.f);
+            g_dl_noise[i].store(0.f);
+            g_ul_noise[i].store(0.f);
+        }
+        printf("[ctrl] all gains -> 1.0, all noise -> 0.0\n");
+        return "{\"ok\":true}\n";
+    }
+
+    if (cmd == "status") {
+        std::ostringstream os;
+        os << "{\"ok\":true,\"ues\":[";
+        for (int i = 0; i < NUM_UES; i++) {
+            os << (i ? "," : "") << "{\"ue\":" << (i + 1)
+               << ",\"dl_gain\":" << g_dl_gain[i].load()
+               << ",\"ul_gain\":" << g_ul_gain[i].load()
+               << ",\"dl_noise\":" << g_dl_noise[i].load()
+               << ",\"ul_noise\":" << g_ul_noise[i].load();
+            if (g_ul_view) {
+                os << ",\"started\":" << (g_ul_view[i].started ? "true" : "false")
+                   << ",\"backlog\":" << (g_ul_view[i].started
+                                          ? g_ul_view[i].backlog() : 0)
+                   << ",\"late_dropped\":" << g_ul_view[i].late_dropped;
+            }
+            os << "}";
+        }
+        os << "]}\n";
+        return os.str();
+    }
+
+    return "{\"ok\":false,\"err\":\"unknown cmd\"}\n";
+}
+
+static void ctrl_thread_fn() {
+    int srv = socket(AF_INET, SOCK_STREAM, 0);
+    if (srv < 0) { perror("[ctrl] socket"); return; }
+    int one = 1;
+    setsockopt(srv, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = htons(CTRL_PORT);
+    if (bind(srv, (sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("[ctrl] bind"); close(srv); return;
+    }
+    listen(srv, 4);
+    printf("[ctrl] listening on 127.0.0.1:%d\n", CTRL_PORT);
+
+    while (g_running) {
+        fd_set fds; FD_ZERO(&fds); FD_SET(srv, &fds);
+        timeval tv{0, 200000};
+        if (select(srv + 1, &fds, nullptr, nullptr, &tv) <= 0) continue;
+        int cli = accept(srv, nullptr, nullptr);
+        if (cli < 0) continue;
+        std::string buf;
+        char tmp[512];
+        while (g_running) {
+            ssize_t n = recv(cli, tmp, sizeof(tmp), 0);
+            if (n <= 0) break;
+            buf.append(tmp, n);
+            size_t nl;
+            while ((nl = buf.find('\n')) != std::string::npos) {
+                std::string line = buf.substr(0, nl);
+                buf.erase(0, nl + 1);
+                if (line.empty()) continue;
+                std::string reply = handle_ctrl_line(line);
+                send(cli, reply.data(), reply.size(), 0);
+            }
+        }
+        close(cli);
+    }
+    close(srv);
 }
 
 int main() {
     std::signal(SIGINT, sig_handler);
     std::signal(SIGTERM, sig_handler);
+    std::signal(SIGPIPE, SIG_IGN);
+
+    for (int i = 0; i < NUM_UES; i++) {
+        g_dl_gain[i].store(1.f);
+        g_ul_gain[i].store(1.f);
+        g_dl_noise[i].store(0.f);
+        g_ul_noise[i].store(0.f);
+    }
+    init_noise_table();
 
     printf("================================================================\n");
-    printf("  C++ ZMQ Broker v3 — aligned lossless FIFO\n");
-    printf("  UL rule: UE_i chunk j -> eNB serve (ul_align_i + j)\n");
-    printf("  No zero-insertion while any UE is active (holds instead)\n");
+    printf("  C++ ZMQ Broker v6 — mixer + gain + noise injection\n");
+    printf("  Control: TCP 127.0.0.1:%d, JSON lines\n", CTRL_PORT);
+    printf("    set_gain / set_noise {ue, dir, value} | kill | reset | status\n");
     printf("  eNB(3101/3100) <-> UE1(3000/3001) UE2(3010/3011) UE3(3020/3021)\n");
-    printf("  POLL_MS=%d, DEFER_MS=%d (pre-UE only), UE_DEAD_MS=%d\n",
-           POLL_MS, DEFER_MS, UE_DEAD_MS);
     printf("================================================================\n");
 
     zmq::context_t ctx(1);
@@ -176,39 +412,33 @@ int main() {
 
     send_req(enb_dl);
 
-    /* ── DL: shared FIFO + per-UE cursors (unchanged from v2) ── */
     std::deque<std::vector<uint8_t>> dl_q;
+    std::deque<uint64_t> dl_q_start;
     uint64_t dl_base = 0;
     uint64_t dl_next = 0;
+    uint64_t dl_total_samps = 0;
     uint64_t ue_dl_cursor[NUM_UES] = {0, 0, 0};
     bool     ue_dl_pending[NUM_UES] = {false, false, false};
     bool     ue_dl_seen[NUM_UES]    = {false, false, false};
     uint64_t dl_dropped = 0;
 
-    /* ── UL: per-UE indexed FIFO + alignment state ── */
-    std::deque<UlChunk> ul_q[NUM_UES];
-    uint64_t ul_rx_count[NUM_UES] = {0, 0, 0};  /* arrival index counter j   */
-    uint64_t ul_align[NUM_UES]    = {0, 0, 0};  /* DL seq of UE's 1st chunk  */
-    bool     ue_active[NUM_UES]   = {false, false, false};
-    bool     ue_dead[NUM_UES]     = {false, false, false};
-    clk::time_point ue_last_ul[NUM_UES];
-    uint64_t ul_dropped[NUM_UES]  = {0, 0, 0};
+    static UlStream ul[NUM_UES];
+    g_ul_view = ul;
 
-    /* eNB UL serve counter — m. Serve m carries UE_i chunk (m - ul_align_i). */
-    uint64_t ul_serve_n = 0;
-
+    uint64_t win_start = 0;
     bool            enb_ul_waiting = false;
     clk::time_point enb_ul_deadline;
 
-    size_t chunk_bytes = 0;
-
-    uint64_t dl_n = 0;
-    uint64_t ul_fresh = 0, ul_zero = 0, ul_deferred_ok = 0;
+    size_t   chunk_bytes = 0;
+    uint64_t dl_n = 0, serve_n = 0;
+    uint64_t serves_full = 0, serves_timeout = 0, serves_deferred_ok = 0;
 
     std::deque<UlEvent> ul_ring;
     bool burst_active = false;
     int  post_burst_left = 0;
     int  burst_count = 0;
+
+    std::thread ctrl_thread(ctrl_thread_fn);
 
     zmq::pollitem_t items[5];
     items[0] = {static_cast<void*>(enb_dl), 0, ZMQ_POLLIN, 0};
@@ -216,98 +446,64 @@ int main() {
     for (int i = 0; i < NUM_UES; i++)
         items[2 + i] = {static_cast<void*>(ue_ul[i]), 0, ZMQ_POLLIN, 0};
 
-    auto any_ue_live = [&]() {
-        for (int i = 0; i < NUM_UES; i++)
-            if (ue_active[i] && !ue_dead[i]) return true;
-        return false;
+    auto ue_is_live = [&](int i) {
+        return ul[i].started &&
+               (clk::now() - ul[i].last_rx) < std::chrono::milliseconds(LIVE_MS);
     };
 
-    /* Can serve m be assembled now?
-     * Ready iff every live UE whose stream covers serve m has its due
-     * chunk at the queue front. UEs whose stream hasn't started yet
-     * (m < ul_align) or that are dead/inactive contribute zeros. */
-    auto ul_ready = [&](uint64_t m) {
+    auto window_ready = [&]() {
+        uint64_t win_end = win_start + WIN_SAMPS;
         for (int i = 0; i < NUM_UES; i++) {
-            if (!ue_active[i] || ue_dead[i]) continue;
-            if (m < ul_align[i]) continue;          /* before UE joined */
-            uint64_t due = m - ul_align[i];
-            if (ul_q[i].empty()) return false;      /* due chunk not here yet */
-            /* Discard anything older than due (shouldn't exist) */
-            while (!ul_q[i].empty() && ul_q[i].front().idx < due) {
-                ul_q[i].pop_front();
-                if (++ul_dropped[i] % 50 == 1)
-                    printf("[warn] ue%d UL chunk behind schedule, dropped "
-                           "(total %lu)\n", i + 1, (unsigned long)ul_dropped[i]);
-            }
-            if (ul_q[i].empty() || ul_q[i].front().idx != due) return false;
+            if (!ue_is_live(i)) continue;
+            if (ul[i].align_samp >= win_end) continue;
+            if (ul[i].end_abs() < win_end) return false;
         }
         return true;
     };
 
-    /* Assemble and send serve m. kind: 'F' if any live UE contributed
-     * (or could), 'Z' for pre-UE zero-fill. */
-    auto serve_enb_ul = [&](char kind) {
+    auto serve_window = [&](bool timed_out) {
         UlEvent ev{};
-        ev.serve_n  = ul_serve_n;
-        ev.deferred = enb_ul_waiting;
-        ev.kind     = kind;
+        ev.win_start = win_start;
+        ev.timed_out = timed_out;
+        ev.deferred  = enb_ul_waiting;
 
-        size_t len = chunk_bytes ? chunk_bytes : 11520 * SAMP_SZ;
-        size_t n_samples = len / SAMP_SZ;
-        std::vector<std::complex<float>> combined(n_samples, {0.f, 0.f});
-
-        if (kind == 'F') {
-            for (int i = 0; i < NUM_UES; i++) {
-                ev.lag[i] = -1;  /* not contributing */
-                if (!ue_active[i] || ue_dead[i]) continue;
-                if (ul_serve_n < ul_align[i]) continue;
-                uint64_t due = ul_serve_n - ul_align[i];
-                if (ul_q[i].empty() || ul_q[i].front().idx != due) continue;
-
-                auto& chunk = ul_q[i].front();
-                ev.energy[i] = buf_energy(chunk.data);
-                ev.lag[i] = 0;
-                if (chunk.data.size() != len && chunk.data.size() != 0) {
-                    /* Size mismatch would break chunk<->subframe arithmetic */
-                    static bool warned = false;
-                    if (!warned) {
-                        printf("[warn] ue%d chunk size %zu != %zu — "
-                               "alignment arithmetic assumes constant size!\n",
-                               i + 1, chunk.data.size(), len);
-                        warned = true;
-                    }
-                }
-                size_t n = chunk.data.size() / SAMP_SZ;
-                auto* s = reinterpret_cast<const std::complex<float>*>(chunk.data.data());
-                for (size_t j = 0; j < n && j < n_samples; j++)
-                    combined[j] += s[j];
-                ul_q[i].pop_front();
-            }
-            ul_fresh++;
-            if (ev.deferred) ul_deferred_ok++;
-        } else {
-            ul_zero++;
+        std::vector<std::complex<float>> combined(WIN_SAMPS, {0.f, 0.f});
+        for (int i = 0; i < NUM_UES; i++) {
+            if (ul[i].started)
+                ev.energy[i] = ul[i].mix_window(win_start, WIN_SAMPS,
+                                                combined.data(),
+                                                g_ul_gain[i].load());
+            /* UL noise: contributes regardless of data/gain — this IS
+             * the uplink-contamination fault when gain=0/noise>0. */
+            add_noise(combined.data(), WIN_SAMPS,
+                      g_ul_noise[i].load(), g_noise_off_ul[i]);
+            ev.backlog[i] = ul[i].started ? ul[i].backlog() : 0;
         }
 
-        zmq::message_t reply(len);
-        memcpy(reply.data(), combined.data(), len);
+        zmq::message_t reply(WIN_SAMPS * SAMP_SZ);
+        memcpy(reply.data(), combined.data(), WIN_SAMPS * SAMP_SZ);
         enb_ul.send(reply);
         enb_ul_waiting = false;
 
+        if (timed_out) serves_timeout++;
+        else { serves_full++; if (ev.deferred) serves_deferred_ok++; }
+
+        win_start += WIN_SAMPS;
+
         ul_ring.push_back(ev);
         if (ul_ring.size() > RING_MAX) ul_ring.pop_front();
-
         if (post_burst_left > 0) {
             print_event(ev);
             if (--post_burst_left == 0)
-                printf("===== end of post-burst window #%d =====\n\n", burst_count);
+                printf("===== end of post-burst window #%d =====\n\n",
+                       burst_count);
         }
         float e_now = ev.energy[0];
         if (!burst_active && e_now > BURST_ON_THRESH) {
             burst_active = true;
             burst_count++;
-            printf("\n===== UL BURST #%d at serve %lu (ue1 e=%.2f) =====\n",
-                   burst_count, (unsigned long)ul_serve_n, e_now);
+            printf("\n===== UL BURST #%d at S=%lu (ue1 e=%.2f) =====\n",
+                   burst_count, (unsigned long)ev.win_start, e_now);
             for (const auto& past : ul_ring) print_event(past);
             printf("===== live-logging next %d serves =====\n", POST_BURST_LOG);
             post_burst_left = POST_BURST_LOG;
@@ -315,20 +511,42 @@ int main() {
             burst_active = false;
         }
 
-        ul_serve_n++;
-        if (ul_serve_n % 1000 == 0)
-            printf("[ul] %lu serves (data: %lu, zero: %lu, deferred-ok: %lu) "
-                   "q=[%zu,%zu,%zu]\n",
-                   (unsigned long)ul_serve_n, (unsigned long)ul_fresh,
-                   (unsigned long)ul_zero, (unsigned long)ul_deferred_ok,
-                   ul_q[0].size(), ul_q[1].size(), ul_q[2].size());
+        serve_n++;
+        if (serve_n % 1000 == 0)
+            printf("[ul] %lu windows (full: %lu, timeout: %lu) "
+                   "backlog=[%lu,%lu,%lu] late=[%lu,%lu,%lu]\n",
+                   (unsigned long)serve_n, (unsigned long)serves_full,
+                   (unsigned long)serves_timeout,
+                   (unsigned long)(ul[0].started ? ul[0].backlog() : 0),
+                   (unsigned long)(ul[1].started ? ul[1].backlog() : 0),
+                   (unsigned long)(ul[2].started ? ul[2].backlog() : 0),
+                   (unsigned long)ul[0].late_dropped,
+                   (unsigned long)ul[1].late_dropped,
+                   (unsigned long)ul[2].late_dropped);
     };
 
     auto serve_ue_dl = [&](int i) {
         size_t idx = (size_t)(ue_dl_cursor[i] - dl_base);
         auto& chunk = dl_q[idx];
+        if (!ue_dl_seen[i] || !ul[i].anchored) {
+            ul[i].align_samp = dl_q_start[idx];
+            ul[i].abs_pos    = dl_q_start[idx] + ul[i].rx_samples;
+            ul[i].anchored   = true;
+            printf("[align] ue%d anchored: UL stream starts at abs sample %lu\n",
+                   i + 1, (unsigned long)ul[i].align_samp);
+        }
+        float gain  = g_dl_gain[i].load();
+        float sigma = g_dl_noise[i].load();
+        size_t n = chunk.size() / SAMP_SZ;
         zmq::message_t reply(chunk.size());
-        memcpy(reply.data(), chunk.data(), chunk.size());
+        auto* src = reinterpret_cast<const std::complex<float>*>(chunk.data());
+        auto* dst = reinterpret_cast<std::complex<float>*>(reply.data());
+        if (gain == 1.f && sigma <= 0.f) {
+            memcpy(reply.data(), chunk.data(), chunk.size());
+        } else {
+            for (size_t j = 0; j < n; j++) dst[j] = src[j] * gain;
+            add_noise(dst, n, sigma, g_noise_off_dl[i]);
+        }
         ue_dl[i].send(reply);
         ue_dl_cursor[i]++;
         ue_dl_pending[i] = false;
@@ -343,6 +561,7 @@ int main() {
         if (!anyone) min_cursor = dl_next;
         while (!dl_q.empty() && dl_base < min_cursor) {
             dl_q.pop_front();
+            dl_q_start.pop_front();
             dl_base++;
         }
     };
@@ -354,82 +573,53 @@ int main() {
             for (int i = 0; i < 5; i++) items[i].revents = 0;
             zmq::poll(items, 5, POLL_MS);
 
-            /* ── 1. Collect UE UL into indexed FIFOs ── */
             for (int i = 0; i < NUM_UES; i++) {
                 if (items[2 + i].revents & ZMQ_POLLIN) {
                     zmq::message_t msg;
                     ue_ul[i].recv(&msg);
-                    UlChunk c;
-                    c.idx = ul_rx_count[i]++;
-                    c.data.assign((uint8_t*)msg.data(),
-                                  (uint8_t*)msg.data() + msg.size());
-                    ul_q[i].push_back(std::move(c));
-                    ue_last_ul[i] = clk::now();
-
-                    if (!ue_active[i]) {
-                        ue_active[i] = true;
-                        ue_dead[i]   = false;
-                        /* Alignment anchor: UE's TX stream begins at its RX
-                         * sample 0 = first DL chunk we served it. */
-                        ul_align[i] = ue_dl_seen[i]
-                                    ? (ue_dl_cursor[i] > 0 ? ue_dl_cursor[i] - 1
-                                                           : 0)
-                                    : dl_next;
-                        /* cursor-1 only correct if exactly the first serve
-                         * happened; the true anchor is recorded at first DL
-                         * serve below — this is a fallback. */
-                        printf("[align] ue%d first UL chunk. ul_align=%lu "
-                               "(current serve=%lu, lag at start=%ld)\n",
-                               i + 1, (unsigned long)ul_align[i],
-                               (unsigned long)ul_serve_n,
-                               (long)ul_serve_n - (long)ul_align[i]);
+                    uint64_t n_samps = msg.size() / SAMP_SZ;
+                    if (!ul[i].started) {
+                        ul[i].started = true;
+                        printf("[ul] ue%d first UL data (%lu samples)%s\n",
+                               i + 1, (unsigned long)n_samps,
+                               ul[i].anchored ? "" : " [pre-anchor!]");
                     }
-                    if (ul_q[i].size() > UL_Q_MAX) {
-                        ul_q[i].pop_front();
-                        if (++ul_dropped[i] % 50 == 1)
-                            printf("[warn] ue%d UL q overflow (eNB stalled?)\n",
-                                   i + 1);
+                    ul[i].q.emplace_back((uint8_t*)msg.data(),
+                                         (uint8_t*)msg.data() + msg.size());
+                    ul[i].rx_samples += n_samps;
+                    ul[i].last_rx = clk::now();
+                    if (ul[i].backlog() > UL_MAX_SAMPS) {
+                        uint64_t d = ul[i].drop_until(ul[i].end_abs()
+                                                      - UL_MAX_SAMPS);
+                        ul[i].ovf_dropped += d;
+                        printf("[warn] ue%d UL backlog cap, dropped %lu\n",
+                               i + 1, (unsigned long)d);
                     }
                     send_req(ue_ul[i]);
                 }
             }
 
-            /* ── 1b. Dead-UE detection ── */
-            for (int i = 0; i < NUM_UES; i++) {
-                if (ue_active[i] && !ue_dead[i] &&
-                    clk::now() - ue_last_ul[i] >
-                        std::chrono::milliseconds(UE_DEAD_MS)) {
-                    ue_dead[i] = true;
-                    printf("[warn] ue%d silent >%dms — marked dead, "
-                           "contributing zeros\n", i + 1, UE_DEAD_MS);
-                }
-            }
-
-            /* ── 2. eNB UL request ── */
             if (items[1].revents & ZMQ_POLLIN) {
                 zmq::message_t req;
                 enb_ul.recv(&req);
                 enb_ul_waiting = true;
-                enb_ul_deadline = clk::now() + std::chrono::milliseconds(DEFER_MS);
+                enb_ul_deadline = clk::now() +
+                                  std::chrono::milliseconds(DEFER_MS);
             }
-            /* ── 2b. Resolve held request ── */
             if (enb_ul_waiting) {
-                if (any_ue_live()) {
-                    if (ul_ready(ul_serve_n))
-                        serve_enb_ul('F');
-                    /* else: hold — never zero-insert while a UE is live.
-                     * (Stalled-UE case handled by dead-marking above.) */
-                } else if (clk::now() >= enb_ul_deadline) {
-                    serve_enb_ul('Z');       /* pre-UE clocking */
-                }
+                if (window_ready())
+                    serve_window(false);
+                else if (clk::now() >= enb_ul_deadline)
+                    serve_window(true);
             }
 
-            /* ── 3. eNB DL ── */
             if (items[0].revents & ZMQ_POLLIN) {
                 zmq::message_t msg;
                 enb_dl.recv(&msg);
                 dl_q.emplace_back((uint8_t*)msg.data(),
                                   (uint8_t*)msg.data() + msg.size());
+                dl_q_start.push_back(dl_total_samps);
+                dl_total_samps += msg.size() / SAMP_SZ;
                 dl_next++;
                 if (chunk_bytes == 0) {
                     chunk_bytes = msg.size();
@@ -449,6 +639,7 @@ int main() {
                         if (ue_dl_seen[i] && ue_dl_cursor[i] == dl_base)
                             ue_dl_cursor[i]++;
                     dl_q.pop_front();
+                    dl_q_start.pop_front();
                     dl_base++;
                     dl_dropped++;
                 }
@@ -459,7 +650,6 @@ int main() {
                 trim_dl();
             }
 
-            /* ── 4. UE DL requests ── */
             for (int i = 0; i < NUM_UES; i++) {
                 if (ue_dl_pending[i]) continue;
                 zmq::pollitem_t it = {static_cast<void*>(ue_dl[i]), 0,
@@ -472,15 +662,6 @@ int main() {
                         ue_dl_seen[i] = true;
                         ue_dl_cursor[i] = dl_next > 0 ? dl_next - 1 : 0;
                         if (ue_dl_cursor[i] < dl_base) ue_dl_cursor[i] = dl_base;
-                        /* THE alignment anchor: this UE's RX sample 0 is
-                         * this DL chunk. Its TX chunk j must land at eNB
-                         * UL serve (this seq + j). */
-                        ul_align[i] = ue_dl_cursor[i];
-                        printf("[align] ue%d first DL serve at seq %lu — "
-                               "ul_align[%d]=%lu (eNB UL serve now %lu)\n",
-                               i + 1, (unsigned long)ue_dl_cursor[i], i + 1,
-                               (unsigned long)ul_align[i],
-                               (unsigned long)ul_serve_n);
                     }
                     if (ue_dl_cursor[i] < dl_next)
                         serve_ue_dl(i);
@@ -495,20 +676,24 @@ int main() {
             fprintf(stderr, "[fatal] zmq error: %s\n", e.what());
     }
 
+    g_running = false;
+    ctrl_thread.join();
+
     printf("\n========== Final Stats ==========\n");
-    printf("DL chunks:      %lu (dropped: %lu)\n",
+    printf("DL chunks:   %lu (dropped: %lu)\n",
            (unsigned long)dl_n, (unsigned long)dl_dropped);
-    printf("UL serves:      %lu\n", (unsigned long)ul_serve_n);
-    printf("  data:         %lu\n", (unsigned long)ul_fresh);
-    printf("  zero (pre-UE clocking): %lu\n", (unsigned long)ul_zero);
-    printf("  deferred→data:          %lu\n", (unsigned long)ul_deferred_ok);
+    printf("UL windows:  %lu (full: %lu, timeout: %lu)\n",
+           (unsigned long)serve_n, (unsigned long)serves_full,
+           (unsigned long)serves_timeout);
     for (int i = 0; i < NUM_UES; i++)
-        printf("ue%d: align=%lu rx=%lu dropped=%lu active=%d dead=%d\n",
-               i + 1, (unsigned long)ul_align[i],
-               (unsigned long)ul_rx_count[i],
-               (unsigned long)ul_dropped[i],
-               ue_active[i] ? 1 : 0, ue_dead[i] ? 1 : 0);
-    printf("UL bursts seen: %d\n", burst_count);
+        printf("ue%d: anchor=%lu rx=%lu late=%lu ovf=%lu "
+               "g(dl/ul)=%.2f/%.2f n(dl/ul)=%.4f/%.4f\n",
+               i + 1, (unsigned long)ul[i].align_samp,
+               (unsigned long)ul[i].rx_samples,
+               (unsigned long)ul[i].late_dropped,
+               (unsigned long)ul[i].ovf_dropped,
+               g_dl_gain[i].load(), g_ul_gain[i].load(),
+               g_dl_noise[i].load(), g_ul_noise[i].load());
     printf("=================================\n");
 
     enb_dl.close();
