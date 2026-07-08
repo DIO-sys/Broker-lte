@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 """
-FastAPI backend for the LTE Network Control Panel.
-Reads srsRAN UE CSV metrics files and serves live data via REST + WebSocket.
-Controls broker gains via TCP socket. Manages iperf3 traffic via subprocess.
+FastAPI backend for the LTE Network Control Panel (v7-broker aware).
 
-Endpoints added to existing backend:
-  POST /api/gain       — set per-UE broker gain (DL/UL)
-  POST /api/traffic    — start/stop iperf3 traffic per UE
-  POST /api/kill       — permanent soft kill (gain=0 both directions)
-  POST /api/reset      — reset all gains to 1.0, stop all traffic
-  POST /api/fault      — inject a fault scenario
-  POST /api/fault/clear — clear an active fault
-  GET  /api/status     — full status (metrics + gains + faults)
+KEY CORRECTIONS vs the earlier draft:
+  1. Broker protocol: uses broker_client which sends int ue + "dir" and reads
+     ok/err. Gains/noise are read via broker.ue_state(n).
+  2. NOISELESS-CHANNEL FINDING: gain does NOT move SNR/MCS/BLER. All graduated
+     degradation is done with set_noise, calibrated by SNR ~= 20*log10(gain*3000/sigma).
+     Gain is only used for RSRP signatures, compose-to-kill, and kill.
+  3. Cell-edge fault is a RAMP (async task walking sigma over time), not a step.
+  4. kill is NOT hardcoded "permanent" — reversibility is untested (Step 0).
 
 CSV columns (semicolon-separated, from srsRAN UE metrics):
   time;cc;earfcn;pci;rsrp;pl;cfo;pci_neigh;rsrp_neigh;cfo_neigh;
   dl_mcs;dl_snr;dl_turbo;dl_brate;dl_bler;ul_ta;distance_km;speed_kmph;
   ul_mcs;ul_buff;ul_brate;ul_bler;rf_o;rf_u;rf_l;is_attached;
-  proc_rmem;proc_rmem_kB;proc_vmem_kB;sys_mem;sys_load;thread_count;
-  cpu_0;cpu_1;...cpu_N
+  proc_rmem;proc_rmem_kB;proc_vmem_kB;sys_mem;sys_load;thread_count;cpu_0;...
 """
 
 import asyncio
@@ -34,20 +31,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
-from broker_client import BrokerControlClient
+from broker_client import BrokerControlClient, ue_num
 
 app = FastAPI(title="LTE Network Control Panel")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ---------------------------------------------------------------------------
-# Broker client (talks to broker's TCP control server on port 4000)
-# ---------------------------------------------------------------------------
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                   allow_methods=["*"], allow_headers=["*"])
 
 broker = BrokerControlClient()
 
@@ -56,96 +44,91 @@ broker = BrokerControlClient()
 # ---------------------------------------------------------------------------
 
 IPERF_SERVER = "172.16.0.1"
-
-iperf_processes: dict[str, dict] = {}  # ue_id -> {"process": Popen, "profile": str, ...}
+iperf_processes: dict[str, dict] = {}
 
 STRESS_PROFILES = {
     "hd_streaming":  {"bitrate": "5M",   "pkt_size": 1400, "bidir": False, "label": "HD Streaming (5 Mbps DL)"},
-    "voice_call":    {"bitrate": "64K",   "pkt_size": 160,  "bidir": True,  "label": "Voice Call (64K bidir)"},
-    "video_call":    {"bitrate": "1.5M",  "pkt_size": 1200, "bidir": True,  "label": "Video Call (1.5 Mbps bidir)"},
-    "bulk_download": {"bitrate": "0",     "pkt_size": 1400, "bidir": False, "label": "Bulk Download (max rate)"},
-    "file_upload":   {"bitrate": "0",     "pkt_size": 1400, "bidir": False, "label": "File Upload (max rate UL)"},
-    "ping_flood":    {"bitrate": "512K",  "pkt_size": 64,   "bidir": False, "label": "Ping Flood"},
+    "voice_call":    {"bitrate": "64K",  "pkt_size": 160,  "bidir": True,  "label": "Voice Call (64K bidir)"},
+    "video_call":    {"bitrate": "1.5M", "pkt_size": 1200, "bidir": True,  "label": "Video Call (1.5 Mbps bidir)"},
+    "bulk_download": {"bitrate": "0",    "pkt_size": 1400, "bidir": False, "label": "Bulk Download (max rate)"},
+    "file_upload":   {"bitrate": "0",    "pkt_size": 1400, "bidir": False, "label": "File Upload (max rate UL)"},
+    "ping_flood":    {"bitrate": "512K", "pkt_size": 64,   "bidir": False, "label": "Ping Flood"},
 }
 
 UE_NETNS = {"ue1": "ue1", "ue2": "ue2", "ue3": "ue3"}
 UE_IPERF_PORTS = {"ue1": 5201, "ue2": 5202, "ue3": 5203}
 
 # ---------------------------------------------------------------------------
-# Fault injection state
+# Fault injection — NOISE-BASED presets from the v7 calibration table
+#   SNR ~= 20*log10(gain*3000/sigma). sigma presets give the target SNR.
+# Each preset declares the exact levers to actuate. None = "don't touch".
 # ---------------------------------------------------------------------------
 
-active_faults: dict[str, dict] = {}  # ue_id -> fault info with pre-fault gains
-
+# sigma -> approx SNR (from measured table, gain 1.0):
+#   170->25dB, 300->20dB, 500->16dB, 950->11dB, 1500->7dB, 2000->~4dB
 FAULT_CONFIGS = {
+    # 1. Co-channel interference: DL Gaussian noise (honest v1 of a structured interferer)
     "co_channel_interference": {
-        "low":    {"dl": 0.7,  "ul": None},
-        "medium": {"dl": 0.4,  "ul": None},
-        "high":   {"dl": 0.15, "ul": None},
+        "low":    {"dl_noise": 170},                 # ~25 dB, MCS holds ~20
+        "medium": {"dl_noise": 500},                 # ~16 dB, MCS drops to ~10
+        "high":   {"dl_noise": 1500},                # ~7 dB,  MCS ~5
     },
+    # 2. Cell edge / BLER degradation: RAMP handled specially (see _run_cell_edge_ramp)
     "bler_degradation": {
-        "low":    {"dl": 0.6,  "ul": None},
-        "medium": {"dl": 0.35, "ul": None},
-        "high":   {"dl": 0.15, "ul": None},
+        "low":    {"ramp": {"dir": "dl", "s0": 170, "s1": 950,  "secs": 45}},
+        "medium": {"ramp": {"dir": "dl", "s0": 170, "s1": 1500, "secs": 45}},
+        "high":   {"ramp": {"dir": "dl", "s0": 170, "s1": 2000, "secs": 60,
+                            "gain0": 1.0, "gain1": 0.5}},  # compose to reach link-death floor
     },
+    # 3. Transport stall: DO NOT touch gain/noise. Stop traffic only. Clean RF is the signature.
     "transport_stall": {
-        # Gain NOT touched — that's the diagnostic signature
-        "low":    {"dl": None, "ul": None, "traffic": "stop"},
-        "medium": {"dl": None, "ul": None, "traffic": "stop"},
-        "high":   {"dl": None, "ul": None, "traffic": "stop"},
+        "low":    {"traffic": "stop"},
+        "medium": {"traffic": "stop"},
+        "high":   {"traffic": "stop"},
     },
+    # 4. Link dropout: severe noise (low/med) -> kill (high). Reversibility of kill is UNTESTED.
     "link_dropout": {
-        "low":    {"dl": 0.1,  "ul": 0.1},
-        "medium": {"dl": 0.05, "ul": 0.05},
-        "high":   {"dl": 0.0,  "ul": 0.0},  # PERMANENT
+        "low":    {"dl_noise": 2000},
+        "medium": {"dl_gain": 0.3, "dl_noise": 2000},
+        "high":   {"kill": True},                    # gain 0 both dirs; may or may not recover
     },
+    # 5. Scheduler starvation: heavy DL traffic + DL noise -> low MCS + retx eating PRBs
     "scheduler_starvation": {
-        "low":    {"dl": 0.5,  "ul": None, "traffic": "heavy_1M"},
-        "medium": {"dl": 0.3,  "ul": None, "traffic": "heavy_3M"},
-        "high":   {"dl": 0.15, "ul": None, "traffic": "heavy_5M"},
+        "low":    {"dl_noise": 500,  "traffic": "heavy_1M"},
+        "medium": {"dl_noise": 950,  "traffic": "heavy_3M"},
+        "high":   {"dl_noise": 950,  "traffic": "heavy_5M"},
     },
+    # 6. Uplink contamination: UL noise (contributes even at gain 0 = pure-noise emitter)
     "uplink_contamination": {
-        "low":    {"dl": None, "ul": 0.7},
-        "medium": {"dl": None, "ul": 0.4},
-        "high":   {"dl": None, "ul": 0.15},
+        "low":    {"ul_noise": 300},
+        "medium": {"ul_noise": 950},
+        "high":   {"ul_noise": 2000},
     },
 }
 
 FAULT_DESCRIPTIONS = {
-    "co_channel_interference": "Second LTE signal on {ue}'s downlink. SNR drops, BLER spikes, MCS falls.",
-    "bler_degradation": "{ue} moving to cell edge. SNR falling, BLER rising, scheduler lowering MCS.",
-    "transport_stall": "{ue}'s ZMQ transport stalling. Throughput drops, jitter rises, SNR stays stable.",
-    "link_dropout": "{ue} lost radio link. RLF, detach, attach rate zero.",
-    "scheduler_starvation": "{ue} in deep fade with heavy traffic. HARQ retransmissions consuming PRBs.",
-    "uplink_contamination": "{ue}'s noisy uplink corrupting composite signal. Cell-wide UL degradation.",
+    "co_channel_interference": "Gaussian interferer on {ue}'s downlink raises the noise floor. SNR drops, MCS falls; BLER holds until SNR is low enough.",
+    "bler_degradation": "{ue} 'moves toward cell edge' — DL noise ramps up over time. SNR trajectory falls steadily; the LSTM's trajectory-prediction showcase.",
+    "transport_stall": "{ue}'s transport stalls. Throughput collapses, RF metrics (SNR/RSRP) stay pristine. Correct agent answer: do NOT touch gain.",
+    "link_dropout": "{ue} driven toward radio link failure. High severity = full kill (gain 0 both dirs).",
+    "scheduler_starvation": "{ue} in noise-induced low MCS under heavy DL traffic. Retransmissions consume PRBs other UEs need.",
+    "uplink_contamination": "{ue}'s uplink slot emits Gaussian noise into the composite. Cell-wide UL degradation as seen by the eNB.",
 }
 
+active_faults: dict[str, dict] = {}   # ue_id -> fault record (+ optional ramp task handle)
+
 # ---------------------------------------------------------------------------
-# UE Config (from existing backend)
+# UE / eNB config
 # ---------------------------------------------------------------------------
 
 UE_CONFIGS = [
-    {
-        "id": "ue1", "label": "UE1", "imsi": "901700123456789",
-        "ip": "172.16.0.2", "csv_path": "/tmp/ue1_metrics.csv",
-        "zmq_tx": 3001, "zmq_rx": 3000,
-    },
-    {
-        "id": "ue2", "label": "UE2", "imsi": "901700123456790",
-        "ip": "172.16.0.3", "csv_path": "/tmp/ue2_metrics.csv",
-        "zmq_tx": 3011, "zmq_rx": 3010,
-    },
-    {
-        "id": "ue3", "label": "UE3", "imsi": "901700123456791",
-        "ip": "172.16.0.4", "csv_path": "/tmp/ue3_metrics.csv",
-        "zmq_tx": 3021, "zmq_rx": 3020,
-    },
+    {"id": "ue1", "label": "UE1", "imsi": "901700123456789", "ip": "172.16.0.2", "csv_path": "/tmp/ue1_metrics.csv", "zmq_tx": 3001, "zmq_rx": 3000},
+    {"id": "ue2", "label": "UE2", "imsi": "901700123456790", "ip": "172.16.0.3", "csv_path": "/tmp/ue2_metrics.csv", "zmq_tx": 3011, "zmq_rx": 3010},
+    {"id": "ue3", "label": "UE3", "imsi": "901700123456791", "ip": "172.16.0.4", "csv_path": "/tmp/ue3_metrics.csv", "zmq_tx": 3021, "zmq_rx": 3020},
 ]
 
-ENB_CONFIG = {
-    "id": "enb1", "label": "eNB1", "cell_id": "0x01", "pci": 1,
-    "earfcn": 2850, "n_prb": 25, "zmq_tx": 3101, "zmq_rx": 3100,
-}
+ENB_CONFIG = {"id": "enb1", "label": "eNB1", "cell_id": "0x01", "pci": 1,
+              "earfcn": 2850, "n_prb": 25, "zmq_tx": 3101, "zmq_rx": 3100}
 
 CSV_COLUMNS = [
     "time", "cc", "earfcn", "pci", "rsrp", "pl", "cfo",
@@ -164,37 +147,41 @@ HISTORY_MAX = 300
 start_time = time.time()
 sample_count = 0
 
-
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
 
 class GainRequest(BaseModel):
-    ue: str          # "ue1", "ue2", "ue3"
-    direction: str   # "dl" or "ul"
-    value: float     # 0.0-1.0
+    ue: str
+    direction: str        # "dl" | "ul"
+    value: float          # 0.0-1.0
+
+class NoiseRequest(BaseModel):
+    ue: str
+    direction: str        # "dl" | "ul"
+    value: float          # 0.0-2000.0 sigma
 
 class TrafficRequest(BaseModel):
     ue: str
-    action: str      # "start" or "stop"
+    action: str           # "start" | "stop"
     profile: str = "voice_call"
     bitrate: str = "64K"
     duration: int = 300
 
 class KillRequest(BaseModel):
     ue: str
+    confirm: bool = False
 
 class FaultRequest(BaseModel):
     ue: str
-    fault_type: str  # key from FAULT_CONFIGS
-    severity: str = "medium"  # "low", "medium", "high"
+    fault_type: str
+    severity: str = "medium"
 
 class FaultClearRequest(BaseModel):
     ue: str
 
-
 # ---------------------------------------------------------------------------
-# CSV metrics parsing (kept from existing backend)
+# CSV parsing (unchanged logic)
 # ---------------------------------------------------------------------------
 
 def parse_csv_line(line: str) -> Optional[dict]:
@@ -204,7 +191,7 @@ def parse_csv_line(line: str) -> Optional[dict]:
     result = {}
     for i, col in enumerate(CSV_COLUMNS):
         val = parts[i]
-        if val == "n/a" or val == "":
+        if val in ("n/a", ""):
             result[col] = None
         else:
             try:
@@ -230,21 +217,14 @@ def read_latest_metrics(ue_id: str, csv_path: str) -> Optional[dict]:
     try:
         with open(csv_path, "r") as f:
             lines = f.readlines()
-        data_lines = [
-            l for l in lines
-            if l.strip() and not l.startswith("#") and not l.startswith("time;")
-        ]
+        data_lines = [l for l in lines
+                      if l.strip() and not l.startswith("#") and not l.startswith("time;")]
         if not data_lines:
             return None
         latest = parse_csv_line(data_lines[-1])
         if latest:
             sample_count += 1
-            recent = data_lines[-HISTORY_MAX:]
-            history = []
-            for line in recent:
-                parsed = parse_csv_line(line)
-                if parsed:
-                    history.append(parsed)
+            history = [p for p in (parse_csv_line(l) for l in data_lines[-HISTORY_MAX:]) if p]
             metrics_history[ue_id] = history
         return latest
     except Exception as e:
@@ -252,121 +232,96 @@ def read_latest_metrics(ue_id: str, csv_path: str) -> Optional[dict]:
         return None
 
 
-def classify_signal(rsrp):
-    if rsrp is None or rsrp == 0:
+def classify_signal(v):
+    if v is None or v == 0:
         return "Unknown"
-    if rsrp >= 50:
-        return "Excellent"
-    if rsrp >= 30:
-        return "Good"
-    if rsrp >= 10:
-        return "Fair"
+    if v >= 50: return "Excellent"
+    if v >= 30: return "Good"
+    if v >= 10: return "Fair"
     return "Weak"
 
-
-def classify_bler(bler):
-    if bler is None:
-        return "Unknown"
-    if bler == 0:
-        return "Clean"
-    if bler <= 2:
-        return "Low"
-    if bler <= 10:
-        return "Fair"
+def classify_bler(b):
+    if b is None: return "Unknown"
+    if b == 0: return "Clean"
+    if b <= 2: return "Low"
+    if b <= 10: return "Fair"
     return "High"
 
-
-def classify_throughput(brate):
-    if brate is None or brate <= 0:
-        return "Idle"
-    if brate < 10000:
-        return "Low"
-    if brate < 100000:
-        return "Active"
+def classify_throughput(r):
+    if r is None or r <= 0: return "Idle"
+    if r < 10000: return "Low"
+    if r < 100000: return "Active"
     return "High"
 
 
 def build_ue_snapshot(ue_cfg: dict) -> dict:
-    metrics = latest_metrics.get(ue_cfg["id"])
     ue_id = ue_cfg["id"]
+    metrics = latest_metrics.get(ue_id)
 
-    # Get broker gains
-    broker_status = broker.get_status()
-    gains = broker_status.get("gains", {})
-    killed_list = broker_status.get("killed", [])
+    # Gains + noise straight from the broker (defensive parse lives in the client)
+    st = broker.ue_state(ue_id)
+    dl_gain, ul_gain = st["dl_gain"], st["ul_gain"]
+    dl_noise, ul_noise = st["dl_noise"], st["ul_noise"]
+    is_killed = (dl_gain == 0.0 and ul_gain == 0.0)
 
-    dl_gain = gains.get(f"{ue_id}_dl", 1.0)
-    ul_gain = gains.get(f"{ue_id}_ul", 1.0)
-    is_killed = ue_id in killed_list
-
-    # Traffic state
     traffic_info = None
     if ue_id in iperf_processes:
-        proc_info = iperf_processes[ue_id]
-        # Check if process is still running
-        if proc_info["process"].poll() is None:
-            traffic_info = {"active": True, "profile": proc_info["profile"]}
+        pinfo = iperf_processes[ue_id]
+        if pinfo["process"].poll() is None:
+            traffic_info = {"active": True, "profile": pinfo["profile"]}
         else:
             del iperf_processes[ue_id]
 
-    # Active fault
     fault_info = active_faults.get(ue_id)
+    # don't leak the asyncio task handle over JSON
+    if fault_info:
+        fault_info = {k: v for k, v in fault_info.items() if k != "_task"}
+
+    gains_block = {"dl": dl_gain, "ul": ul_gain,
+                   "dl_noise": dl_noise, "ul_noise": ul_noise,
+                   "backlog": st.get("backlog"), "late_dropped": st.get("late_dropped")}
 
     if metrics is None:
-        return {
-            "id": ue_id, "label": ue_cfg["label"], "imsi": ue_cfg["imsi"],
-            "ip": None, "status": "No Data",
-            "zmq": {"tx": ue_cfg["zmq_tx"], "rx": ue_cfg["zmq_rx"]},
-            "rf": None, "throughput": None, "process": None,
-            "gains": {"dl": dl_gain, "ul": ul_gain},
-            "killed": is_killed,
-            "traffic": traffic_info,
-            "fault": fault_info,
-        }
+        return {"id": ue_id, "label": ue_cfg["label"], "imsi": ue_cfg["imsi"],
+                "ip": None, "status": "No Data",
+                "zmq": {"tx": ue_cfg["zmq_tx"], "rx": ue_cfg["zmq_rx"]},
+                "rf": None, "throughput": None, "process": None,
+                "gains": gains_block, "killed": is_killed,
+                "traffic": traffic_info, "fault": fault_info}
 
     attached = metrics.get("is_attached", 0) == 1.0
     has_traffic = (metrics.get("dl_brate", 0) or 0) > 0 or (metrics.get("ul_brate", 0) or 0) > 0
-
-    if is_killed:
-        status = "Killed"
-    elif attached and has_traffic:
-        status = "Online"
-    elif attached:
-        status = "Idle"
-    else:
-        status = "Detached"
+    status = "Killed" if is_killed else ("Online" if (attached and has_traffic)
+             else ("Idle" if attached else "Detached"))
 
     return {
         "id": ue_id, "label": ue_cfg["label"], "imsi": ue_cfg["imsi"],
-        "ip": ue_cfg["ip"] if attached else None,
-        "status": status,
+        "ip": ue_cfg["ip"] if attached else None, "status": status,
         "zmq": {"tx": ue_cfg["zmq_tx"], "rx": ue_cfg["zmq_rx"]},
         "rf": {
-            "rsrp": {"value": metrics.get("rsrp"), "unit": "dBm", "descriptor": classify_signal(metrics.get("rsrp"))},
-            "dl_snr": {"value": metrics.get("dl_snr"), "unit": "dB", "descriptor": classify_signal(metrics.get("dl_snr"))},
-            "dl_mcs": {"value": metrics.get("dl_mcs"), "unit": "", "descriptor": None},
-            "ul_mcs": {"value": metrics.get("ul_mcs"), "unit": "", "descriptor": None},
-            "dl_bler": {"value": metrics.get("dl_bler"), "unit": "%", "descriptor": classify_bler(metrics.get("dl_bler"))},
-            "ul_bler": {"value": metrics.get("ul_bler"), "unit": "%", "descriptor": classify_bler(metrics.get("ul_bler"))},
-            "cfo": {"value": metrics.get("cfo"), "unit": "Hz", "descriptor": None},
-            "pathloss": {"value": metrics.get("pl"), "unit": "dB", "descriptor": None},
-            "earfcn": {"value": metrics.get("earfcn"), "unit": "", "descriptor": None},
-            "pci": {"value": metrics.get("pci"), "unit": "", "descriptor": None},
+            "rsrp":   {"value": metrics.get("rsrp"),   "unit": "dBm", "descriptor": classify_signal(metrics.get("rsrp"))},
+            "dl_snr": {"value": metrics.get("dl_snr"), "unit": "dB",  "descriptor": classify_signal(metrics.get("dl_snr"))},
+            "dl_mcs": {"value": metrics.get("dl_mcs"), "unit": "",    "descriptor": None},
+            "ul_mcs": {"value": metrics.get("ul_mcs"), "unit": "",    "descriptor": None},
+            "dl_bler":{"value": metrics.get("dl_bler"),"unit": "%",   "descriptor": classify_bler(metrics.get("dl_bler"))},
+            "ul_bler":{"value": metrics.get("ul_bler"),"unit": "%",   "descriptor": classify_bler(metrics.get("ul_bler"))},
+            "cfo":    {"value": metrics.get("cfo"),    "unit": "Hz",  "descriptor": None},
+            "pathloss":{"value": metrics.get("pl"),    "unit": "dB",  "descriptor": None},
+            "earfcn": {"value": metrics.get("earfcn"), "unit": "",    "descriptor": None},
+            "pci":    {"value": metrics.get("pci"),    "unit": "",    "descriptor": None},
         },
         "throughput": {
             "dl_brate": {"value": metrics.get("dl_brate", 0), "unit": "bps", "descriptor": classify_throughput(metrics.get("dl_brate"))},
             "ul_brate": {"value": metrics.get("ul_brate", 0), "unit": "bps", "descriptor": classify_throughput(metrics.get("ul_brate"))},
         },
         "process": {
-            "sys_load": {"value": metrics.get("sys_load"), "unit": "%", "descriptor": None},
+            "sys_load":    {"value": metrics.get("sys_load"), "unit": "%",  "descriptor": None},
             "proc_mem_kb": {"value": metrics.get("proc_rmem_kB"), "unit": "KB", "descriptor": None},
-            "sys_mem": {"value": metrics.get("sys_mem"), "unit": "%", "descriptor": None},
-            "cpu_avg": {"value": round(metrics.get("cpu_avg", 0), 1) if metrics.get("cpu_avg") else None, "unit": "%", "descriptor": None},
+            "sys_mem":     {"value": metrics.get("sys_mem"), "unit": "%", "descriptor": None},
+            "cpu_avg":     {"value": round(metrics.get("cpu_avg", 0), 1) if metrics.get("cpu_avg") else None, "unit": "%", "descriptor": None},
         },
-        "gains": {"dl": dl_gain, "ul": ul_gain},
-        "killed": is_killed,
-        "traffic": traffic_info,
-        "fault": fault_info,
+        "gains": gains_block, "killed": is_killed,
+        "traffic": traffic_info, "fault": fault_info,
     }
 
 
@@ -375,85 +330,76 @@ def build_full_snapshot() -> dict:
         m = read_latest_metrics(ue_cfg["id"], ue_cfg["csv_path"])
         if m:
             latest_metrics[ue_cfg["id"]] = m
-
-    ues = [build_ue_snapshot(ue_cfg) for ue_cfg in UE_CONFIGS]
+    ues = [build_ue_snapshot(u) for u in UE_CONFIGS]
     online = sum(1 for u in ues if u["status"] == "Online")
     attached = sum(1 for u in ues if u["status"] in ("Online", "Idle"))
-
+    faults_public = {k: {kk: vv for kk, vv in v.items() if kk != "_task"}
+                     for k, v in active_faults.items()}
     return {
-        "timestamp": time.time(),
-        "elapsed_s": round(time.time() - start_time),
-        "sample_count": sample_count,
-        "enb": ENB_CONFIG,
-        "summary": {
-            "ues_online": online,
-            "ues_attached": attached,
-            "ues_total": len(ues),
-        },
-        "ues": ues,
-        "broker_connected": broker.is_connected(),
-        "active_faults": active_faults,
+        "timestamp": time.time(), "elapsed_s": round(time.time() - start_time),
+        "sample_count": sample_count, "enb": ENB_CONFIG,
+        "summary": {"ues_online": online, "ues_attached": attached, "ues_total": len(ues)},
+        "ues": ues, "broker_connected": broker.is_connected(),
+        "active_faults": faults_public,
     }
-
 
 # ---------------------------------------------------------------------------
 # iperf3 helpers
 # ---------------------------------------------------------------------------
 
-def start_iperf(ue_id: str, profile: str, bitrate: str = "64K",
-                pkt_size: int = 160, bidir: bool = True, duration: int = 300) -> dict:
-    """Start iperf3 in the UE's network namespace."""
+def start_iperf(ue_id, profile, bitrate="64K", pkt_size=160, bidir=True, duration=300) -> dict:
     if ue_id not in UE_NETNS:
         return {"error": f"unknown UE: {ue_id}"}
-
-    # Kill existing
     stop_iperf(ue_id)
-
-    netns = UE_NETNS[ue_id]
-    port = UE_IPERF_PORTS[ue_id]
-
-    cmd = [
-        "sudo", "ip", "netns", "exec", netns,
-        "iperf3", "-c", IPERF_SERVER,
-        "-u", "-b", bitrate, "-l", str(pkt_size),
-        "-t", str(duration), "-p", str(port),
-    ]
+    netns, port = UE_NETNS[ue_id], UE_IPERF_PORTS[ue_id]
+    cmd = ["sudo", "ip", "netns", "exec", netns, "iperf3", "-c", IPERF_SERVER,
+           "-u", "-b", bitrate, "-l", str(pkt_size), "-t", str(duration), "-p", str(port)]
     if bidir:
         cmd.append("--bidir")
-
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        iperf_processes[ue_id] = {
-            "process": proc,
-            "profile": profile,
-            "bitrate": bitrate,
-            "pid": proc.pid,
-            "started": time.time(),
-        }
+        iperf_processes[ue_id] = {"process": proc, "profile": profile,
+                                  "bitrate": bitrate, "pid": proc.pid, "started": time.time()}
         return {"status": "started", "ue": ue_id, "profile": profile, "pid": proc.pid}
     except Exception as e:
         return {"error": str(e)}
 
 
-def stop_iperf(ue_id: str) -> dict:
-    """Stop iperf3 on a UE."""
+def stop_iperf(ue_id) -> dict:
     if ue_id not in iperf_processes:
         return {"status": "no active traffic", "ue": ue_id}
-
-    proc_info = iperf_processes[ue_id]
+    pinfo = iperf_processes[ue_id]
     try:
-        proc_info["process"].terminate()
-        proc_info["process"].wait(timeout=5)
+        pinfo["process"].terminate()
+        pinfo["process"].wait(timeout=5)
     except Exception:
-        proc_info["process"].kill()
-
-    profile = proc_info["profile"]
+        pinfo["process"].kill()
+    profile = pinfo["profile"]
     del iperf_processes[ue_id]
     return {"status": "stopped", "ue": ue_id, "was": profile}
 
+# ---------------------------------------------------------------------------
+# Cell-edge RAMP task (the fault that makes trajectory prediction meaningful)
+# ---------------------------------------------------------------------------
+
+async def _run_cell_edge_ramp(ue_id: str, ramp: dict):
+    """Walk DL noise sigma s0 -> s1 over `secs`, optionally ramping gain too."""
+    s0, s1, secs = ramp["s0"], ramp["s1"], ramp["secs"]
+    g0, g1 = ramp.get("gain0"), ramp.get("gain1")
+    steps = max(secs, 1)
+    try:
+        for i in range(steps + 1):
+            frac = i / steps
+            sigma = s0 + (s1 - s0) * frac
+            broker.set_noise(ue_id, ramp.get("dir", "dl"), round(sigma, 1))
+            if g0 is not None and g1 is not None:
+                broker.set_gain(ue_id, "dl", round(g0 + (g1 - g0) * frac, 3))
+            await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        pass  # cleared/reset mid-ramp
 
 # ---------------------------------------------------------------------------
-# REST endpoints — existing
+# REST — read
 # ---------------------------------------------------------------------------
 
 @app.get("/")
@@ -463,11 +409,9 @@ async def serve_frontend():
         return FileResponse(html_path, media_type="text/html")
     return HTMLResponse("<h1>frontend.html not found</h1>", status_code=404)
 
-
 @app.get("/api/status")
 async def get_status():
     return build_full_snapshot()
-
 
 @app.get("/api/history/{ue_id}")
 async def get_history(ue_id: str, limit: int = 60):
@@ -476,215 +420,188 @@ async def get_history(ue_id: str, limit: int = 60):
     hist = metrics_history[ue_id][-limit:]
     return {"ue_id": ue_id, "count": len(hist), "metrics": hist}
 
-
-@app.get("/api/export")
-async def export_dataset():
-    return {
-        "exported_at": time.time(),
-        "enb": ENB_CONFIG,
-        "ues": {ue["id"]: metrics_history[ue["id"]] for ue in UE_CONFIGS},
-    }
-
+@app.get("/api/broker/status")
+async def broker_status_raw():
+    return broker.get_status()
 
 # ---------------------------------------------------------------------------
-# REST endpoints — NEW: controls
+# REST — the two levers
 # ---------------------------------------------------------------------------
 
 @app.post("/api/gain")
 async def set_gain(req: GainRequest):
-    """Set per-UE broker gain via TCP control socket."""
     if req.ue not in UE_NETNS:
         return {"error": f"unknown UE: {req.ue}"}
     if req.direction not in ("dl", "ul"):
         return {"error": "direction must be 'dl' or 'ul'"}
-    if req.value < 0.0 or req.value > 1.0:
-        return {"error": "value must be 0.0-1.0"}
+    if not 0.0 <= req.value <= 1.0:
+        return {"error": "gain must be 0.0-1.0"}
     return broker.set_gain(req.ue, req.direction, req.value)
 
+@app.post("/api/noise")
+async def set_noise(req: NoiseRequest):
+    """The graduated-degradation primitive. SNR ~= 20*log10(gain*3000/sigma)."""
+    if req.ue not in UE_NETNS:
+        return {"error": f"unknown UE: {req.ue}"}
+    if req.direction not in ("dl", "ul"):
+        return {"error": "direction must be 'dl' or 'ul'"}
+    if not 0.0 <= req.value <= 2000.0:
+        return {"error": "noise sigma must be 0.0-2000.0"}
+    return broker.set_noise(req.ue, req.direction, req.value)
 
 @app.post("/api/traffic")
 async def manage_traffic(req: TrafficRequest):
-    """Start or stop iperf3 traffic on a UE."""
     if req.ue not in UE_NETNS:
         return {"error": f"unknown UE: {req.ue}"}
-
     if req.action == "stop":
         return stop_iperf(req.ue)
-
     if req.action == "start":
-        # Look up stress profile if provided
         if req.profile in STRESS_PROFILES:
             p = STRESS_PROFILES[req.profile]
-            return start_iperf(
-                req.ue, req.profile,
-                bitrate=p["bitrate"], pkt_size=p["pkt_size"],
-                bidir=p["bidir"], duration=req.duration,
-            )
-        return start_iperf(
-            req.ue, req.profile,
-            bitrate=req.bitrate, duration=req.duration,
-        )
-
+            return start_iperf(req.ue, req.profile, bitrate=p["bitrate"],
+                               pkt_size=p["pkt_size"], bidir=p["bidir"], duration=req.duration)
+        return start_iperf(req.ue, req.profile, bitrate=req.bitrate, duration=req.duration)
     return {"error": "action must be 'start' or 'stop'"}
-
 
 @app.post("/api/kill")
 async def kill_ue(req: KillRequest):
-    """Permanent soft kill via broker. Cannot be reversed without stack restart."""
+    """Soft kill (gain=0 both dirs). Reversibility is UNTESTED (Step 0)."""
     if req.ue not in UE_NETNS:
         return {"error": f"unknown UE: {req.ue}"}
+    if not req.confirm:
+        return {"error": "kill requires confirm=true"}
     stop_iperf(req.ue)
-    return broker.kill(req.ue)
-
+    result = broker.kill(req.ue)
+    result["note"] = "reversibility untested — may require stack restart to recover"
+    return result
 
 @app.post("/api/reset")
 async def reset_cell():
-    """Reset all gains to 1.0, stop all traffic, clear non-permanent faults."""
-    # Stop all iperf3
+    # cancel any running ramps
+    for f in active_faults.values():
+        task = f.get("_task")
+        if task:
+            task.cancel()
     for ue_id in list(iperf_processes.keys()):
         stop_iperf(ue_id)
-
-    # Clear faults (restore pre-fault gains where possible)
-    for ue_id in list(active_faults.keys()):
-        fault = active_faults[ue_id]
-        if not fault.get("permanent"):
-            pre = fault.get("pre_gains", {})
-            if pre.get("dl") is not None:
-                broker.set_gain(ue_id, "dl", pre["dl"])
-            if pre.get("ul") is not None:
-                broker.set_gain(ue_id, "ul", pre["ul"])
-            del active_faults[ue_id]
-
-    # Reset remaining gains
-    result = broker.reset()
+    active_faults.clear()
+    result = broker.reset()   # gains->1.0, noise->0.0
     result["traffic"] = "all stopped"
     result["faults_cleared"] = True
     return result
 
+# ---------------------------------------------------------------------------
+# REST — fault injection
+# ---------------------------------------------------------------------------
 
 @app.post("/api/fault")
 async def inject_fault(req: FaultRequest):
-    """Inject a fault scenario on a specific UE."""
     if req.ue not in UE_NETNS:
         return {"error": f"unknown UE: {req.ue}"}
     if req.fault_type not in FAULT_CONFIGS:
-        return {"error": f"unknown fault: {req.fault_type}. Options: {list(FAULT_CONFIGS.keys())}"}
+        return {"error": f"unknown fault: {req.fault_type}. Options: {list(FAULT_CONFIGS)}"}
     if req.severity not in ("low", "medium", "high"):
         return {"error": "severity must be low, medium, or high"}
 
-    config = FAULT_CONFIGS[req.fault_type][req.severity]
+    cfg = FAULT_CONFIGS[req.fault_type][req.severity]
 
-    # Get current gains to save pre-fault state
-    current = broker.get_status()
-    current_gains = current.get("gains", {})
-    pre_dl = current_gains.get(f"{req.ue}_dl", 1.0)
-    pre_ul = current_gains.get(f"{req.ue}_ul", 1.0)
-
-    # Save fault state
-    active_faults[req.ue] = {
-        "type": req.fault_type,
-        "severity": req.severity,
-        "started_at": time.time(),
-        "pre_gains": {"dl": pre_dl, "ul": pre_ul},
-        "permanent": req.fault_type == "link_dropout" and req.severity == "high",
+    # snapshot pre-fault levers so we can restore on clear
+    pre = broker.ue_state(req.ue)
+    record = {
+        "type": req.fault_type, "severity": req.severity, "started_at": time.time(),
+        "pre": {"dl_gain": pre["dl_gain"], "ul_gain": pre["ul_gain"],
+                "dl_noise": pre["dl_noise"], "ul_noise": pre["ul_noise"]},
         "description": FAULT_DESCRIPTIONS[req.fault_type].format(ue=req.ue.upper()),
+        "killed": bool(cfg.get("kill")),
     }
+    active_faults[req.ue] = record
 
-    # Apply gain changes
     results = {}
-    if config.get("dl") is not None:
-        results["dl"] = broker.set_gain(req.ue, "dl", config["dl"])
-    if config.get("ul") is not None:
-        results["ul"] = broker.set_gain(req.ue, "ul", config["ul"])
+    # ramp fault (cell edge)
+    if "ramp" in cfg:
+        task = asyncio.create_task(_run_cell_edge_ramp(req.ue, cfg["ramp"]))
+        record["_task"] = task
+        results["ramp"] = {"started": True, **{k: v for k, v in cfg["ramp"].items()}}
+    else:
+        if cfg.get("dl_gain") is not None:
+            results["dl_gain"] = broker.set_gain(req.ue, "dl", cfg["dl_gain"])
+        if cfg.get("ul_gain") is not None:
+            results["ul_gain"] = broker.set_gain(req.ue, "ul", cfg["ul_gain"])
+        if cfg.get("dl_noise") is not None:
+            results["dl_noise"] = broker.set_noise(req.ue, "dl", cfg["dl_noise"])
+        if cfg.get("ul_noise") is not None:
+            results["ul_noise"] = broker.set_noise(req.ue, "ul", cfg["ul_noise"])
+        if cfg.get("kill"):
+            stop_iperf(req.ue)
+            results["kill"] = broker.kill(req.ue)
 
-    # Apply traffic actions
-    traffic_action = config.get("traffic")
-    if traffic_action == "stop":
+    # traffic
+    ta = cfg.get("traffic")
+    if ta == "stop":
         results["traffic"] = stop_iperf(req.ue)
-    elif traffic_action and traffic_action.startswith("heavy_"):
-        rate = traffic_action.replace("heavy_", "")
-        results["traffic"] = start_iperf(
-            req.ue, f"fault_stress_{rate}",
-            bitrate=rate, pkt_size=1400, bidir=False,
-        )
+    elif ta and ta.startswith("heavy_"):
+        rate = ta.replace("heavy_", "")
+        results["traffic"] = start_iperf(req.ue, f"fault_stress_{rate}",
+                                         bitrate=rate, pkt_size=1400, bidir=False)
 
-    # Permanent kill at high link_dropout
-    if req.fault_type == "link_dropout" and req.severity == "high":
-        results["kill"] = broker.kill(req.ue)
-
-    return {
-        "status": "injected",
-        "ue": req.ue,
-        "fault": req.fault_type,
-        "severity": req.severity,
-        "description": active_faults[req.ue]["description"],
-        "permanent": active_faults[req.ue]["permanent"],
-        "results": results,
-    }
+    return {"status": "injected", "ue": req.ue, "fault": req.fault_type,
+            "severity": req.severity, "description": record["description"],
+            "killed": record["killed"], "results": results}
 
 
 @app.post("/api/fault/clear")
 async def clear_fault(req: FaultClearRequest):
-    """Clear an active fault and restore pre-fault gains."""
     if req.ue not in active_faults:
         return {"status": "no active fault", "ue": req.ue}
-
-    fault = active_faults[req.ue]
-
-    if fault.get("permanent"):
-        return {"error": f"{req.ue} was permanently killed. Cannot clear."}
-
-    # Restore pre-fault gains
-    pre = fault.get("pre_gains", {})
+    fault = active_faults.pop(req.ue)
+    task = fault.get("_task")
+    if task:
+        task.cancel()
+    pre = fault.get("pre", {})
     results = {}
-    if pre.get("dl") is not None:
-        results["dl"] = broker.set_gain(req.ue, "dl", pre["dl"])
-    if pre.get("ul") is not None:
-        results["ul"] = broker.set_gain(req.ue, "ul", pre["ul"])
-
-    del active_faults[req.ue]
-    return {"status": "cleared", "ue": req.ue, "gains_restored": pre, "results": results}
+    # restore levers to pre-fault values
+    if pre.get("dl_gain") is not None:
+        results["dl_gain"] = broker.set_gain(req.ue, "dl", pre["dl_gain"])
+    if pre.get("ul_gain") is not None:
+        results["ul_gain"] = broker.set_gain(req.ue, "ul", pre["ul_gain"])
+    results["dl_noise"] = broker.set_noise(req.ue, "dl", pre.get("dl_noise", 0.0))
+    results["ul_noise"] = broker.set_noise(req.ue, "ul", pre.get("ul_noise", 0.0))
+    out = {"status": "cleared", "ue": req.ue, "restored": pre, "results": results}
+    if fault.get("killed"):
+        out["note"] = "was a kill — UE may not re-establish without a stack restart (untested)"
+    return out
 
 
 @app.get("/api/fault/active")
 async def get_active_faults():
-    """Return all active faults."""
-    return active_faults
+    return {k: {kk: vv for kk, vv in v.items() if kk != "_task"}
+            for k, v in active_faults.items()}
 
 
 @app.get("/api/fault/catalog")
 async def fault_catalog():
-    """Return available fault types and stress profiles."""
     return {
         "faults": [
             {"type": k, "severities": ["low", "medium", "high"],
-             "description": v.format(ue="UE-X"),
-             "permanent_at_high": k == "link_dropout"}
-            for k, v in FAULT_DESCRIPTIONS.items()
+             "description": FAULT_DESCRIPTIONS[k].format(ue="UE-X"),
+             "mechanism": {sev: cfg for sev, cfg in FAULT_CONFIGS[k].items()}}
+            for k in FAULT_CONFIGS
         ],
         "stress_profiles": [
             {"id": k, "label": v["label"], "bitrate": v["bitrate"]}
             for k, v in STRESS_PROFILES.items()
         ],
+        "calibration": "SNR(dB) ~= 20*log10(gain*3000/sigma)  [measured, +/-1 dB]",
     }
 
-
-@app.get("/api/broker/status")
-async def broker_status():
-    """Direct broker status check (gains, killed UEs, connectivity)."""
-    return broker.get_status()
-
-
 # ---------------------------------------------------------------------------
-# WebSocket — push live updates (expanded with gains + faults)
+# WebSocket
 # ---------------------------------------------------------------------------
 
 connected_clients: set[WebSocket] = set()
 
-
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
-    global connected_clients
     await ws.accept()
     connected_clients.add(ws)
     try:
@@ -697,42 +614,29 @@ async def websocket_endpoint(ws: WebSocket):
     except Exception:
         connected_clients.discard(ws)
 
-
 async def broadcast_loop():
-    global connected_clients
     while True:
         await asyncio.sleep(1)
         if connected_clients:
-            snapshot = build_full_snapshot()
-            msg = json.dumps({"type": "snapshot", "data": snapshot})
+            msg = json.dumps({"type": "snapshot", "data": build_full_snapshot()})
             dead = set()
             for ws in connected_clients:
                 try:
                     await ws.send_text(msg)
                 except Exception:
                     dead.add(ws)
-            connected_clients -= dead
-
+            connected_clients.difference_update(dead)
 
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(broadcast_loop())
 
-
 # ---------------------------------------------------------------------------
-# Run
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
     import uvicorn
     print("=" * 60)
-    print("  LTE Network Control Panel — Backend")
-    print("  http://localhost:8080")
-    print("  Broker control: tcp://127.0.0.1:4000")
-    print("=" * 60)
-    if broker.is_connected():
-        print("  ✓ Broker connected")
-    else:
-        print("  ✗ Broker not reachable (start broker first)")
+    print("  LTE Network Control Panel — Backend (v7-broker aware)")
+    print("  http://localhost:8080   broker: tcp://127.0.0.1:4000")
+    print("  Broker connected" if broker.is_connected() else "  Broker NOT reachable (start broker first)")
     print("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")
