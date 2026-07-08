@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Broker Control Client — speaks the v7 broker's TCP JSON-lines protocol.
+incomplete lol
 
 v7 control protocol (127.0.0.1:4000, one JSON object per line):
     {"cmd":"set_gain","ue":1,"dir":"dl","value":0.6}   # value 0.0-1.0, dir dl|ul
