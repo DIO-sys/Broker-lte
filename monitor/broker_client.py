@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Broker Control Client — speaks the v7 broker's TCP JSON-lines protocol.
-incomplete lol
 
 v7 control protocol (127.0.0.1:4000, one JSON object per line):
     {"cmd":"set_gain","ue":1,"dir":"dl","value":0.6}   # value 0.0-1.0, dir dl|ul
@@ -101,15 +100,7 @@ class BrokerControlClient:
         return self.get_status().get("ok", False) is True
 
     def ue_state(self, ue) -> dict:
-        """
-        Pull one UE's gains/noise out of the status reply, tolerant of the
-        exact JSON shape. v7 status is documented as 'per-UE gains, noise,
-        started, backlog, late_dropped'.
-
-        >>> ONE PLACE TO FIX if the real shape differs. Run:
-        >>>   echo '{"cmd":"status"}' | nc -q1 localhost 4000
-        >>> and adjust the key lookups below to match.
-        """
+        """Pull one UE's gains/noise out of the status reply (v7 array shape)."""
         st = self.get_status()
         n = ue_num(ue)
         blank = {"dl_gain": 1.0, "ul_gain": 1.0, "dl_noise": 0.0,
@@ -117,25 +108,19 @@ class BrokerControlClient:
         if not st.get("ok"):
             return blank
 
-        # Shape A: {"ues": {"1": {...}}}  or  {"ues": {"ue1": {...}}}
-        ues = st.get("ues") or st.get("ue") or {}
-        entry = ues.get(str(n)) or ues.get(n) or ues.get(f"ue{n}")
-        if entry:
-            return {
-                "dl_gain": entry.get("dl_gain", entry.get("gain_dl", 1.0)),
-                "ul_gain": entry.get("ul_gain", entry.get("gain_ul", 1.0)),
-                "dl_noise": entry.get("dl_noise", entry.get("noise_dl", 0.0)),
-                "ul_noise": entry.get("ul_noise", entry.get("noise_ul", 0.0)),
-                "backlog": entry.get("backlog"),
-                "late_dropped": entry.get("late_dropped"),
-            }
-
-        # Shape B: flat keys like {"ue1_dl_gain": ..., "ue1_dl_noise": ...}
-        return {
-            "dl_gain": st.get(f"ue{n}_dl_gain", st.get(f"gain_ue{n}_dl", 1.0)),
-            "ul_gain": st.get(f"ue{n}_ul_gain", st.get(f"gain_ue{n}_ul", 1.0)),
-            "dl_noise": st.get(f"ue{n}_dl_noise", 0.0),
-            "ul_noise": st.get(f"ue{n}_ul_noise", 0.0),
-            "backlog": st.get(f"ue{n}_backlog"),
-            "late_dropped": st.get(f"ue{n}_late_dropped"),
-        }
+        # Exact v7 shape (broker.cpp status handler):
+        #   {"ok":true,"ues":[{"ue":1,"dl_gain":..,"ul_gain":..,
+        #                      "dl_noise":..,"ul_noise":..,
+        #                      "started":bool,"backlog":N,"late_dropped":N}, ...]}
+        for entry in st.get("ues", []):
+            if entry.get("ue") == n:
+                return {
+                    "dl_gain": entry.get("dl_gain", 1.0),
+                    "ul_gain": entry.get("ul_gain", 1.0),
+                    "dl_noise": entry.get("dl_noise", 0.0),
+                    "ul_noise": entry.get("ul_noise", 0.0),
+                    "backlog": entry.get("backlog"),
+                    "late_dropped": entry.get("late_dropped"),
+                    "started": entry.get("started"),
+                }
+        return blank

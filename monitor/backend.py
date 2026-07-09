@@ -465,15 +465,36 @@ async def manage_traffic(req: TrafficRequest):
 
 @app.post("/api/kill")
 async def kill_ue(req: KillRequest):
-    """Soft kill (gain=0 both dirs). Reversibility is UNTESTED (Step 0)."""
+    """
+    Soft kill (gain=0 both dirs). REVERSIBLE: the broker keeps the UE's
+    streams position-correct while muted, so restoring gain lets the UE
+    re-establish. Reverse with POST /api/reset, or set both gains back to 1.0.
+    """
     if req.ue not in UE_NETNS:
         return {"error": f"unknown UE: {req.ue}"}
     if not req.confirm:
         return {"error": "kill requires confirm=true"}
     stop_iperf(req.ue)
     result = broker.kill(req.ue)
-    result["note"] = "reversibility untested — may require stack restart to recover"
+    result["reversible"] = True
+    result["revive"] = "POST /api/reset or set dl+ul gain to 1.0"
     return result
+
+
+@app.post("/api/revive")
+async def revive_ue(req: KillRequest):
+    """Undo a kill on one UE: restore both gains to 1.0 and clear noise."""
+    if req.ue not in UE_NETNS:
+        return {"error": f"unknown UE: {req.ue}"}
+    active_faults.pop(req.ue, None)
+    results = {
+        "dl_gain": broker.set_gain(req.ue, "dl", 1.0),
+        "ul_gain": broker.set_gain(req.ue, "ul", 1.0),
+        "dl_noise": broker.set_noise(req.ue, "dl", 0.0),
+        "ul_noise": broker.set_noise(req.ue, "ul", 0.0),
+    }
+    return {"status": "revived", "ue": req.ue, "results": results,
+            "note": "UE should re-establish within ~T310/T311 (watch EPC for Service Request)"}
 
 @app.post("/api/reset")
 async def reset_cell():
@@ -568,7 +589,7 @@ async def clear_fault(req: FaultClearRequest):
     results["ul_noise"] = broker.set_noise(req.ue, "ul", pre.get("ul_noise", 0.0))
     out = {"status": "cleared", "ue": req.ue, "restored": pre, "results": results}
     if fault.get("killed"):
-        out["note"] = "was a kill — UE may not re-establish without a stack restart (untested)"
+        out["note"] = "was a kill — gains restored; UE should re-establish on its own (reversible)"
     return out
 
 
