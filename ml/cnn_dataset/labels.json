@@ -1,0 +1,68 @@
+{
+  "classes": [
+    "clean",
+    "co_channel_interference",
+    "bler_degradation",
+    "transport_stall",
+    "link_dropout",
+    "scheduler_starvation",
+    "uplink_contamination"
+  ],
+  "class_to_idx": {
+    "clean": 0,
+    "co_channel_interference": 1,
+    "bler_degradation": 2,
+    "transport_stall": 3,
+    "link_dropout": 4,
+    "scheduler_starvation": 5,
+    "uplink_contamination": 6
+  },
+  "channels": [
+    "rsrp",
+    "dl_snr",
+    "dl_mcs",
+    "ul_mcs",
+    "dl_bler",
+    "ul_bler",
+    "dl_brate_log",
+    "ul_brate_log"
+  ],
+  "normalization": {
+    "rsrp": [
+      60.0,
+      34.0
+    ],
+    "dl_snr": [
+      150.0,
+      150.0
+    ],
+    "dl_mcs": [
+      20.0,
+      20.0
+    ],
+    "ul_mcs": [
+      20.0,
+      20.0
+    ],
+    "dl_bler": [
+      100.0,
+      100.0
+    ],
+    "ul_bler": [
+      100.0,
+      100.0
+    ],
+    "dl_brate_log": [
+      12.0,
+      12.0
+    ],
+    "ul_brate_log": [
+      12.0,
+      12.0
+    ]
+  },
+  "window": 10,
+  "stride": 2,
+  "max_gap_s": 1.5,
+  "split_rule": "per (fault_type, severity) group: ue3's session -> val, ue1/ue2 -> train"
+}

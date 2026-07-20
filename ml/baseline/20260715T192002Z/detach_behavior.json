@@ -1,0 +1,1334 @@
+{
+  "ue": "ue3",
+  "other_ues": [
+    "ue1",
+    "ue2"
+  ],
+  "kill_response": {
+    "ok": true,
+    "note": "soft kill: dl=ul gain 0.0",
+    "reversible": true,
+    "revive": "POST /api/reset or set dl+ul gain to 1.0"
+  },
+  "revive_response": {
+    "status": "revived",
+    "ue": "ue3",
+    "results": {
+      "dl_gain": {
+        "ok": true
+      },
+      "ul_gain": {
+        "ok": true
+      },
+      "dl_noise": {
+        "ok": true
+      },
+      "ul_noise": {
+        "ok": true
+      }
+    },
+    "note": "UE should re-establish within ~T310/T311 (watch EPC for Service Request)"
+  },
+  "reattach_time_s": 4.03349757194519,
+  "reattach_confirmed": true,
+  "other_ue_stability_during_detach": {
+    "ue1": {
+      "rsrp": {
+        "mean": 60.0,
+        "std": 0.0,
+        "n": 30
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 30
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 30
+      },
+      "any_status_change": false
+    },
+    "ue2": {
+      "rsrp": {
+        "mean": 60.0,
+        "std": 0.0,
+        "n": 30
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 30
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 30
+      },
+      "any_status_change": false
+    }
+  },
+  "timeline": [
+    {
+      "t": 1784143264.8863301,
+      "tag": "pre",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 26.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143265.8906527,
+      "tag": "pre",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 30.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143266.8953311,
+      "tag": "pre",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143267.8999434,
+      "tag": "pre",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 57600,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143268.9054933,
+      "tag": "pre",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143269.911649,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143270.9185636,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 69120,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 69120,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143271.9240618,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 92160,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 92160,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143272.930413,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143273.9358525,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 69120,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143274.9419482,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 92160,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143275.9490016,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 57600,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 69120,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143276.954579,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 69120,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143277.9600024,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 92160,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 92160,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143278.9652152,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143279.9710255,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3847680
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 80640,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143280.976514,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143281.9821844,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 57600,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 57600,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143282.987919,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143283.9939756,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143285.000057,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143286.0058842,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143287.0119708,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143288.0216112,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143289.0270011,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143290.0322616,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143291.0374348,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143292.0433865,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143293.0489728,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143294.055022,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143295.060752,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143296.0667791,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143297.073217,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143298.078941,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143299.0856843,
+      "tag": "detached",
+      "ue3": {
+        "status": "Killed",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143300.0936084,
+      "tag": "reattaching",
+      "ue3": {
+        "status": "Detached",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 46080,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143301.0997386,
+      "tag": "reattaching",
+      "ue3": {
+        "status": "Detached",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143302.1059213,
+      "tag": "reattaching",
+      "ue3": {
+        "status": "Detached",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143303.1148057,
+      "tag": "reattaching",
+      "ue3": {
+        "status": "Detached",
+        "rsrp": 0.0,
+        "dl_snr": 0.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143304.1210933,
+      "tag": "reattaching",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143305.1277716,
+      "tag": "post-reattach",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 57600,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143306.135058,
+      "tag": "post-reattach",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 34560,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143307.1421652,
+      "tag": "post-reattach",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 11520,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143308.149927,
+      "tag": "post-reattach",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    },
+    {
+      "t": 1784143309.1570249,
+      "tag": "post-reattach",
+      "ue3": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 3859200
+      },
+      "ue1": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 23040,
+        "late_dropped": 3479040
+      },
+      "ue2": {
+        "status": "Online",
+        "rsrp": 60.0,
+        "dl_snr": 141.0,
+        "dl_bler": 0.0,
+        "backlog": 0,
+        "late_dropped": 6670080
+      }
+    }
+  ]
+}

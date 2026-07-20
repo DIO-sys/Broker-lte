@@ -2,720 +2,945 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Cell Topology Monitor — 3000-Series Broker</title>
+<title>LTE Scope v5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0B0E14;
-    --panel: #141925;
-    --panel-border: #232B3D;
-    --teal: #5EEAD4;
-    --amber: #FBBF24;
-    --red: #F87171;
-    --blue: #60A5FA;
-    --text: #E4E8F0;
-    --text-muted: #8B95A8;
-    --text-faint: #4D5670;
+    --bg: #0c0f0b;
+    --panel: #12160f;
+    --panel-2: #171c13;
+    --grat: #232b1e;
+    --grat-dim: #1a2016;
+    --text: #d8ddd0;
+    --text-muted: #8a9280;
+    --text-faint: #4d5446;
+    --good: #6fcf72;
+    --good-dim: #2c4022;
+    --mid: #f2c230;
+    --mid-dim: #6b5620;
+    --dead: #e2534f;
+    --dead-dim: #5f2225;
+    --info: #6b8fa3;
+    --mono: 'JetBrains Mono', monospace;
+    --disp: 'Oswald', sans-serif;
   }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); padding: 20px; }
+  .wrap { max-width: 1320px; margin: 0 auto; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--grat); }
+  .brand { font-family: var(--disp); font-weight: 700; font-size: 18px; letter-spacing: .04em; text-transform: uppercase; }
+  .brand span { color: var(--info); }
+  .sim-badge { font-size: 9px; color: var(--good); display: flex; align-items: center; gap: 5px; }
+  .sim-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); animation: pulse 1.5s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-    padding: 32px 24px 64px;
-  }
+  /* ---- stat cards ---- */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+  .stat-card { background: var(--panel); border: 1px solid var(--grat); border-radius: 4px; padding: 10px 14px; }
+  .stat-label { font-size: 8px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); margin-bottom: 4px; }
+  .stat-val { font-family: var(--disp); font-size: 24px; font-weight: 600; }
+  .stat-val small { font-size: 14px; color: var(--text-faint); font-weight: 400; }
 
-  .header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    max-width: 1100px;
-    margin: 0 auto 12px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
+  /* ---- layout ---- */
+  .main-grid { display: grid; grid-template-columns: 1fr 300px; gap: 12px; align-items: start; }
+  .card { background: var(--panel); border: 1px solid var(--grat); border-radius: 4px; padding: 12px 14px; margin-bottom: 10px; }
+  .card-title { font-family: var(--disp); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .sec-label { font-family: var(--disp); font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); margin: 4px 0 6px; }
 
-  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  /* ---- radar ---- */
+  .radar-panel { background: var(--panel); border: 1px solid var(--grat); border-radius: 4px; padding: 4px; margin-bottom: 10px; }
+  .radar-svg { width: 100%; height: 260px; display: block; }
+  .ring { fill: none; stroke: var(--grat-dim); stroke-width: 1; }
+  .cross { stroke: var(--grat-dim); stroke-width: 1; }
+  .compass { font-size: 8px; fill: var(--text-faint); font-family: var(--mono); }
+  .ring-label { font-size: 7px; fill: var(--text-faint); font-family: var(--mono); opacity: .6; }
+  .sweep { transform-origin: 250px 130px; animation: spin 4s linear infinite; opacity: 0.45; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .mast-dot { fill: var(--text); }
+  .mast-ring { fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
+  .site-label { font-family: var(--disp); font-size: 10px; font-weight: 600; fill: var(--text); letter-spacing: .03em; }
+  .trace { fill: none; stroke-linecap: round; cursor: pointer; transition: stroke .2s; }
+  .trace-pulse { r: 2.4; opacity: 0; }
+  .trace-pulse.run { animation: run 2.2s linear infinite; }
+  @keyframes run { 0%{offset-distance:0%;opacity:0} 8%{opacity:1} 92%{opacity:1} 100%{offset-distance:100%;opacity:0} }
+  .blip { cursor: pointer; }
+  .blip circle.node { stroke-width: 2; fill: var(--panel-2); transition: r .15s, stroke .2s; }
+  .blip.selected circle.node { r: 14; }
+  .blip-tag { font-family: var(--disp); font-size: 10px; font-weight: 600; }
+  .blip-sub { font-size: 7px; fill: var(--text-faint); font-family: var(--mono); }
 
-  .header .meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  /* ---- gain sliders with +/- ---- */
+  .gain-strips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .gain-strip { background: var(--panel); border: 1px solid var(--grat); border-left-width: 3px; border-radius: 4px; padding: 9px 10px; cursor: pointer; transition: border-left-color .2s, background .15s; }
+  .gain-strip.selected { background: var(--panel-2); }
+  .gain-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+  .gain-name { font-family: var(--disp); font-size: 11px; font-weight: 600; }
+  .gain-status { font-size: 7px; text-transform: uppercase; letter-spacing: .05em; }
+  .slider-row { display: flex; align-items: center; gap: 5px; margin: 5px 0; }
+  .slider-label { font-size: 7px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); width: 20px; flex-shrink: 0; }
+  .inc-btn { width: 18px; height: 18px; border: 1px solid var(--grat); border-radius: 3px; background: var(--panel-2); color: var(--text-muted); font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-family: var(--mono); line-height: 1; }
+  .inc-btn:hover { border-color: var(--text-faint); color: var(--text); }
+  input[type=range] { -webkit-appearance: none; flex: 1; height: 3px; background: var(--panel-2); border-radius: 2px; outline: none; min-width: 0; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: var(--text); cursor: pointer; }
+  .slider-val { font-size: 9px; color: var(--text-muted); width: 28px; text-align: right; flex-shrink: 0; }
 
-  .conn-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--text-faint);
-    transition: all 0.3s;
-  }
-  .conn-dot.live { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+  /* ---- UE metrics dropdown ---- */
+  .detail-toggle { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; padding: 3px 0; cursor: pointer; font-size: 7px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .05em; border-top: 1px dashed var(--grat); }
+  .detail-toggle:hover { color: var(--text-muted); }
+  .detail-toggle .arrow { transition: transform .2s; display: inline-block; }
+  .detail-toggle .arrow.open { transform: rotate(180deg); }
+  .detail-panel { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grat-dim); }
+  .detail-panel.open { display: block; }
+  .detail-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 8px; }
+  .detail-key { color: var(--text-faint); }
+  .detail-val { color: var(--text-muted); text-align: right; }
+  .detail-badge { font-size: 7px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+  .detail-badge.good { background: var(--good-dim); color: var(--good); }
+  .detail-badge.mid { background: var(--mid-dim); color: var(--mid); }
+  .detail-badge.bad { background: var(--dead-dim); color: var(--dead); }
 
-  .sim-badge {
-    max-width: 1100px;
-    margin: 0 auto 28px;
-    font-size: 12px;
-    color: var(--text-faint);
-    font-family: 'JetBrains Mono', monospace;
-  }
+  /* ---- UE actions ---- */
+  .action-strips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .action-strip { background: var(--panel); border: 1px solid var(--grat); border-radius: 4px; padding: 8px 8px; }
+  .action-strip-head { font-family: var(--disp); font-size: 10px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+  .action-btns { display: flex; gap: 4px; }
+  .abtn { flex: 1; padding: 6px 0; text-align: center; border: 1px solid var(--grat); border-radius: 3px; font-size: 8px; font-family: var(--mono); cursor: pointer; background: var(--panel-2); color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+  .abtn:hover { border-color: var(--text-faint); }
+  .abtn.kill { color: var(--dead); } .abtn.kill:hover { border-color: var(--dead); }
+  .abtn.revive { color: var(--good); } .abtn.revive:hover { border-color: var(--good); }
 
-  .stats {
-    max-width: 1100px;
-    margin: 0 auto 32px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-  }
+  /* ---- CNN classifier ---- */
+  .cnn-ue { font-family: var(--disp); font-size: 11px; font-weight: 600; }
+  .chip-row { display: flex; gap: 4px; }
+  .chip { padding: 5px 12px; border: 1px solid var(--grat); border-radius: 3px; font-size: 9px; font-family: var(--disp); font-weight: 600; cursor: pointer; color: var(--text-faint); background: var(--panel-2); }
+  .cnn-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  .cnn-label { font-size: 9px; width: 78px; flex-shrink: 0; color: var(--text-muted); text-align: right; }
+  .cnn-bar-track { flex: 1; height: 8px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+  .cnn-bar-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+  .cnn-pct { font-size: 9px; width: 28px; text-align: right; color: var(--text-muted); flex-shrink: 0; }
+  .cnn-verdict { margin-top: 8px; padding: 7px 9px; border-radius: 3px; font-size: 10px; border-left: 3px solid; }
 
-  .stat-box {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 14px 18px;
-  }
+  /* ---- event log ---- */
+  .log-scroll { max-height: 130px; overflow-y: auto; }
+  .log-scroll::-webkit-scrollbar { width: 4px; }
+  .log-scroll::-webkit-scrollbar-thumb { background: var(--grat); border-radius: 2px; }
+  .log-row { display: flex; gap: 10px; font-size: 9px; padding: 4px 0; border-top: 1px solid var(--grat-dim); }
+  .log-row:first-child { border-top: none; }
+  .log-time { color: var(--text-faint); flex-shrink: 0; width: 58px; }
+  .log-msg { color: var(--text-muted); }
 
-  .stat-label {
-    font-size: 11px;
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
+  /* ---- full-width sections ---- */
+  .fw-card { background: var(--panel); border: 1px solid var(--grat); border-radius: 4px; padding: 12px 14px; margin-bottom: 10px; }
+  .fw-top { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .fw-top .card-title { margin-bottom: 0; white-space: nowrap; }
+  .sev-row { display: flex; gap: 4px; }
+  .sev { padding: 5px 10px; border: 1px solid var(--grat); border-radius: 3px; font-size: 8px; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; color: var(--text-faint); background: var(--panel-2); }
+  .sev.active { border-color: var(--text); color: var(--text); }
+  .clear-btn { margin-left: auto; padding: 5px 12px; background: none; border: 1px solid var(--grat); border-radius: 3px; color: var(--text-faint); font-size: 8px; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; font-family: var(--mono); }
+  .six-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .six-btn { text-align: left; padding: 9px 9px; border: 1px solid var(--grat); border-radius: 3px; background: var(--panel-2); cursor: pointer; }
+  .six-btn.active { border-color: var(--info); }
+  .six-btn .ft { font-size: 9px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .six-btn .fs { font-size: 7px; color: var(--text-faint); margin-top: 3px; line-height: 1.4; }
+  .fw-preview { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--grat); font-size: 9px; color: var(--text-faint); }
+  .fw-preview b { color: var(--info); }
 
-  .stat-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 22px;
-    font-weight: 600;
-    margin-top: 4px;
-  }
+  /* ---- bottom bar ---- */
+  .bottom-bar { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+  .bot-btn { padding: 8px 22px; border: 1px solid var(--grat); border-radius: 4px; background: var(--panel); font-family: var(--mono); font-size: 10px; color: var(--text-muted); cursor: pointer; }
+  .bot-btn:hover { border-color: var(--text-faint); color: var(--text); }
+  .bot-btn.reset { color: var(--dead); } .bot-btn.reset:hover { border-color: var(--dead); }
 
-  /* ---- Topology ---- */
-  .topology {
-    max-width: 1100px;
-    margin: 0 auto 40px;
-    position: relative;
-    height: 320px;
-  }
+  .broker-banner { display: none; background: var(--dead-dim); border: 1px solid var(--dead); border-radius: 4px; padding: 8px 14px; margin-bottom: 10px; font-size: 10px; color: var(--dead); text-align: center; }
+  .broker-banner.show { display: block; }
 
-  svg.links {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
-  }
-
-  .link-line {
-    stroke-width: 2;
-    fill: none;
-    transition: stroke 0.4s ease;
-  }
-  .link-line.Online { stroke: var(--teal); }
-  .link-line.Idle { stroke: var(--amber); stroke-dasharray: 6 6; }
-  .link-line.Detached { stroke: var(--red); stroke-dasharray: 3 5; opacity: 0.5; }
-  .link-line.NoData { stroke: var(--text-faint); stroke-dasharray: 2 6; opacity: 0.4; }
-
-  .link-pulse {
-    fill: var(--teal);
-    opacity: 0;
-  }
-  .link-pulse.active {
-    animation: travel 1.6s linear infinite;
-  }
-
-  @keyframes travel {
-    0%   { offset-distance: 0%; opacity: 0; }
-    8%   { opacity: 1; }
-    92%  { opacity: 1; }
-    100% { offset-distance: 100%; opacity: 0; }
-  }
-
-  .tower {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    width: 160px;
-  }
-
-  .tower-icon {
-    width: 56px; height: 56px;
-    margin: 0 auto 8px;
-    color: var(--text);
-  }
-
-  .tower-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .tower-sub {
-    font-size: 11px;
-    color: var(--text-faint);
-    font-family: 'JetBrains Mono', monospace;
-    margin-top: 2px;
-  }
-
-  .broker-badge {
-    position: absolute;
-    top: 130px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 6px;
-    padding: 4px 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.03em;
-    z-index: 2;
-  }
-
-  .ue-node {
-    position: absolute;
-    top: 230px;
-    width: 130px;
-    text-align: center;
-  }
-
-  .ue-icon-wrap {
-    width: 44px; height: 44px;
-    margin: 0 auto 8px;
-    border-radius: 50%;
-    background: var(--panel);
-    border: 2px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.4s, box-shadow 0.4s;
-  }
-  .ue-icon-wrap.Online { border-color: var(--teal); box-shadow: 0 0 14px rgba(94,234,212,0.35); }
-  .ue-icon-wrap.Idle { border-color: var(--amber); box-shadow: 0 0 14px rgba(251,191,36,0.25); }
-  .ue-icon-wrap.Detached { border-color: var(--red); }
-  .ue-icon-wrap.NoData { border-color: var(--text-faint); }
-
-  .ue-icon-wrap svg { width: 20px; height: 20px; }
-  .ue-icon-wrap.Online svg { color: var(--teal); }
-  .ue-icon-wrap.Idle svg { color: var(--amber); }
-  .ue-icon-wrap.Detached svg { color: var(--red); }
-  .ue-icon-wrap.NoData svg { color: var(--text-faint); }
-
-  .ue-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .ue-ip {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--text-faint);
-    margin-top: 1px;
-  }
-
-  .ue-status-pill {
-    display: inline-block;
-    margin-top: 4px;
-    font-size: 10px;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 10px;
-  }
-  .ue-status-pill.Online { background: rgba(94,234,212,0.12); color: var(--teal); }
-  .ue-status-pill.Idle { background: rgba(251,191,36,0.12); color: var(--amber); }
-  .ue-status-pill.Detached { background: rgba(248,113,113,0.1); color: var(--red); }
-  .ue-status-pill.NoData { background: rgba(139,149,168,0.12); color: var(--text-muted); }
-
-  /* ---- Cards ---- */
-  .cards {
-    max-width: 1100px;
-    margin: 0 auto 32px;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 18px 20px;
-  }
-
-  .card-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--panel-border);
-  }
-
-  .card-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 15px;
-  }
-
-  .card-sub {
-    font-size: 11px;
-    color: var(--text-faint);
-    margin-top: 2px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  .section-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-faint);
-    margin: 12px 0 4px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--panel-border);
-  }
-
-  .metric-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 5px 0;
-    font-size: 13px;
-  }
-
-  .metric-name { color: var(--text-muted); }
-
-  .metric-val {
-    font-family: 'JetBrains Mono', monospace;
-    text-align: right;
-  }
-
-  .metric-num { font-weight: 600; }
-
-  .metric-unit {
-    font-size: 11px;
-    color: var(--text-faint);
-    margin-left: 3px;
-  }
-
-  .metric-desc {
-    font-size: 10px;
-    margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: 8px;
-  }
-
-  .desc-Excellent, .desc-Good, .desc-Clean, .desc-Active, .desc-OK, .desc-Low {
-    background: rgba(94,234,212,0.12); color: var(--teal);
-  }
-  .desc-Fair, .desc-Moderate, .desc-Elevated {
-    background: rgba(251,191,36,0.12); color: var(--amber);
-  }
-  .desc-Weak, .desc-High, .desc-Idle, .desc-Detached, .desc-Critical {
-    background: rgba(248,113,113,0.1); color: var(--red);
-  }
-
-  .empty-metrics {
-    color: var(--text-faint);
-    font-size: 12px;
-    font-style: italic;
-    padding: 12px 0;
-  }
-
-  /* ---- Sparkline ---- */
-  .sparkline-container {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--panel-border);
-  }
-  .sparkline-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-faint);
-    margin-bottom: 6px;
-  }
-  .sparkline-svg {
-    width: 100%;
-    height: 40px;
-  }
-
-  /* ---- Controls ---- */
-  .controls {
-    max-width: 1100px;
-    margin: 0 auto;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .ctrl-btn {
-    padding: 10px 18px;
-    border-radius: 8px;
-    border: 1px solid var(--panel-border);
-    background: var(--panel);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .ctrl-btn:hover { border-color: var(--text-muted); }
-  .ctrl-btn.primary { border-color: var(--teal); color: var(--teal); }
-  .ctrl-btn.primary:hover { background: rgba(94,234,212,0.08); }
-
-  .export-status {
-    font-size: 12px;
-    color: var(--teal);
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  @media (max-width: 768px) {
-    .stats { grid-template-columns: repeat(2, 1fr); }
-    .cards { grid-template-columns: 1fr; }
-  }
+  .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
+  .confirm-overlay.show { display: flex; }
+  .confirm-box { background: var(--panel); border: 1px solid var(--grat); border-radius: 6px; padding: 20px 24px; max-width: 340px; text-align: center; }
+  .confirm-msg { font-size: 11px; color: var(--text); margin-bottom: 14px; line-height: 1.6; }
+  .confirm-btns { display: flex; gap: 8px; justify-content: center; }
+  .confirm-btn { padding: 7px 18px; border: 1px solid var(--grat); border-radius: 3px; font-family: var(--mono); font-size: 9px; cursor: pointer; background: var(--panel-2); text-transform: uppercase; letter-spacing: .03em; }
+  .confirm-btn.yes { color: var(--dead); border-color: var(--dead); }
+  .confirm-btn.no { color: var(--text-muted); }
+  .abtn.disabled { opacity: .3; pointer-events: none; }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="header">
-  <h1>Cell Topology Monitor</h1>
-  <div class="meta">
-    <span class="conn-dot" id="connDot"></span>
-    <span id="connLabel">connecting...</span>
+  <div class="topbar">
+    <div class="brand">LTE<span>SCOPE</span> · CELL-1</div>
+    <div class="sim-badge"><div class="sim-dot"></div>simulation running</div>
   </div>
-</div>
 
-<div class="sim-badge">3000-series broker topology · 1 eNB · 3 UEs · ZMQ + GNU Radio</div>
+  <!-- BROKER BANNER -->
+  <div class="broker-banner" id="brokerBanner">Broker disconnected — start the broker on port 4000 to enable controls</div>
 
-<div class="stats">
-  <div class="stat-box">
-    <div class="stat-label">UEs Attached</div>
-    <div class="stat-value" id="statAttached">— / 3</div>
+  <!-- CONFIRM DIALOG -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+      <div class="confirm-msg" id="confirmMsg"></div>
+      <div class="confirm-btns">
+        <div class="confirm-btn yes" id="confirmYes">confirm</div>
+        <div class="confirm-btn no" onclick="hideConfirm()">cancel</div>
+      </div>
+    </div>
   </div>
-  <div class="stat-box">
-    <div class="stat-label">UEs Online</div>
-    <div class="stat-value" id="statOnline">— / 3</div>
-  </div>
-  <div class="stat-box">
-    <div class="stat-label">Samples</div>
-    <div class="stat-value" id="statSamples">—</div>
-  </div>
-  <div class="stat-box">
-    <div class="stat-label">Uptime</div>
-    <div class="stat-value" id="statElapsed">—</div>
-  </div>
-</div>
 
-<div class="topology" id="topology">
-  <svg class="links" id="linksSvg"></svg>
-  <div class="tower">
-    <svg class="tower-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M12 2L4 22M12 2l8 20M9 14h6M7.5 18h9" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="12" cy="2" r="1.4" fill="currentColor" stroke="none"/>
-    </svg>
-    <div class="tower-label" id="towerLabel">eNB1</div>
-    <div class="tower-sub" id="towerSub">PCI 1 · EARFCN 2850 · 50 PRB</div>
+  <!-- STAT CARDS -->
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-label">UEs attached</div><div class="stat-val" id="uesAttached">3 <small>/ 3</small></div></div>
+    <div class="stat-card"><div class="stat-label">Samples recorded</div><div class="stat-val" id="samplesRec">1,847</div></div>
+    <div class="stat-card"><div class="stat-label">Elapsed</div><div class="stat-val" id="elapsed">4m 32s</div></div>
   </div>
-  <div class="broker-badge">GRC BROKER</div>
-  <div id="ueNodes"></div>
-</div>
 
-<div class="cards" id="cards"></div>
+  <div class="main-grid">
 
-<div class="controls">
-  <button class="ctrl-btn primary" id="exportBtn">⬇ Export dataset</button>
-  <span class="export-status" id="exportStatus"></span>
+    <!-- ========== LEFT ========== -->
+    <div>
+
+      <!-- RADAR -->
+      <div class="radar-panel">
+        <svg class="radar-svg" viewBox="0 0 500 260">
+          <g transform="translate(0,6)">
+            <circle class="ring" cx="250" cy="125" r="42"/>
+            <circle class="ring" cx="250" cy="125" r="80"/>
+            <circle class="ring" cx="250" cy="125" r="118"/>
+            <text class="ring-label" x="293" y="128">-70</text>
+            <text class="ring-label" x="331" y="128">-80</text>
+            <text class="ring-label" x="369" y="128">-90</text>
+            <line class="cross" x1="250" y1="7" x2="250" y2="243"/>
+            <line class="cross" x1="132" y1="125" x2="368" y2="125"/>
+            <text class="compass" x="250" y="16" text-anchor="middle">N</text>
+            <text class="compass" x="362" y="128">E</text>
+            <text class="compass" x="250" y="242" text-anchor="middle">S</text>
+            <text class="compass" x="138" y="128">W</text>
+
+            <g class="sweep">
+              <path d="M 250 125 L 250 7 A 118 118 0 0 1 282 12 Z" fill="var(--info)" opacity="0.08"/>
+            </g>
+
+            <!-- traces -->
+            <path class="trace" id="trace-ue1" onclick="sel('ue1')" d="M 250 125 L 290 95" stroke-width="1.6"/>
+            <circle class="trace-pulse run" id="pulse-ue1" style="offset-path:path('M 250 125 L 290 95')"/>
+
+            <path class="trace" id="trace-ue2" onclick="sel('ue2')" d="M 250 125 C 288 130, 315 140, 335 152" stroke-width="1.5"/>
+            <circle class="trace-pulse run" id="pulse-ue2" style="offset-path:path('M 250 125 C 288 130, 315 140, 335 152')"/>
+
+            <path class="trace" id="trace-ue3" onclick="sel('ue3')" d="M 250 125 C 220 150, 195 175, 175 195" stroke-width="1.4"/>
+            <circle class="trace-pulse run" id="pulse-ue3" style="offset-path:path('M 250 125 C 220 150, 195 175, 175 195')"/>
+
+            <!-- eNB -->
+            <circle class="mast-ring" cx="250" cy="125" r="5"/>
+            <circle class="mast-dot" cx="250" cy="125" r="2"/>
+            <text class="site-label" x="250" y="114" text-anchor="middle">eNB1</text>
+
+            <!-- blips -->
+            <g class="blip selected" id="blip-ue1" onclick="sel('ue1')">
+              <circle class="node" id="node-ue1" cx="290" cy="95" r="11"/>
+              <text class="blip-tag" id="tag-ue1" x="290" y="98" text-anchor="middle">1</text>
+              <text class="blip-sub" x="290" y="84" text-anchor="middle">-68dBm</text>
+            </g>
+            <g class="blip" id="blip-ue2" onclick="sel('ue2')">
+              <circle class="node" id="node-ue2" cx="335" cy="152" r="11"/>
+              <text class="blip-tag" id="tag-ue2" x="335" y="155" text-anchor="middle">2</text>
+              <text class="blip-sub" x="335" y="168" text-anchor="middle">-74dBm</text>
+            </g>
+            <g class="blip" id="blip-ue3" onclick="sel('ue3')">
+              <circle class="node" id="node-ue3" cx="175" cy="195" r="11"/>
+              <text class="blip-tag" id="tag-ue3" x="175" y="198" text-anchor="middle">3</text>
+              <text class="blip-sub" x="175" y="212" text-anchor="middle">-82dBm</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- GAIN CONTROLS -->
+      <div class="sec-label">Gain control</div>
+      <div class="gain-strips" id="gainStrips"></div>
+
+      <!-- UE ACTIONS -->
+      <div class="sec-label">UE actions</div>
+      <div class="action-strips" id="actionStrips"></div>
+
+    </div>
+
+    <!-- ========== RIGHT ========== -->
+    <div>
+
+      <!-- CNN CLASSIFIER -->
+      <div class="card">
+        <div class="card-title"><span>CNN classifier</span><span class="cnn-ue" id="cnnLabel">UE1</span></div>
+        <div class="chip-row" style="margin-bottom:10px" id="cnnChips"></div>
+        <div id="cnnRows"></div>
+        <div class="cnn-verdict" id="cnnVerdict"></div>
+      </div>
+
+      <!-- EVENT LOG -->
+      <div class="card">
+        <div class="card-title">Event log</div>
+        <div class="log-scroll" id="logEl"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FAULT INJECTION -->
+  <div class="fw-card">
+    <div class="fw-top">
+      <div class="card-title">Fault injection</div>
+      <div class="chip-row" id="faultChips"></div>
+      <div class="sev-row" id="sevRow"></div>
+      <button class="clear-btn" onclick="clearFault()">clear fault</button>
+    </div>
+    <div class="six-grid" id="faultGrid"></div>
+    <div class="fw-preview" id="faultPreview"></div>
+  </div>
+
+  <!-- STRESS INJECTION -->
+  <div class="fw-card">
+    <div class="fw-top">
+      <div class="card-title">Stress injection</div>
+      <div class="chip-row" id="stressChips"></div>
+      <button class="clear-btn" onclick="clearStress()">clear stress</button>
+    </div>
+    <div class="six-grid" id="stressGrid"></div>
+    <div style="margin-top:8px;font-size:8px;color:var(--text-faint);">Combine stress with faults — interference under load, starvation during streaming.</div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <div class="bot-btn" onclick="doExport()">Export dataset (JSON)</div>
+    <div class="bot-btn reset" onclick="doReset()">Reset simulation</div>
+  </div>
+
 </div>
 
 <script>
-const PHONE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-  <rect x="6" y="2" width="12" height="20" rx="2.5" stroke-linejoin="round"/>
-  <line x1="10" y1="18.5" x2="14" y2="18.5" stroke-linecap="round"/>
-</svg>`;
+// =========================================================================
+// CONFIG
+// =========================================================================
+const API = window.location.origin;
+const WS_URL = `ws://${window.location.host}/ws`;
 
-// State
-let snapshot = null;
-let ws = null;
+const C = { good:'var(--good)', mid:'var(--mid)', dead:'var(--dead)' };
+const L = { good:'nominal', mid:'degraded', dead:'dropped' };
+
+// Backend fault_type strings (must match backend exactly)
+const faultDefs = [
+  {id:'co_channel_interference',  ft:'Co-channel interference', fs:'Gaussian interferer on DL'},
+  {id:'bler_degradation',         ft:'Cell edge (BLER)',        fs:'Noise ramp simulates movement'},
+  {id:'transport_stall',          ft:'Transport stall',         fs:'ZMQ socket delay'},
+  {id:'link_dropout',             ft:'Link dropout',            fs:'Gain→0, triggers RLF'},
+  {id:'scheduler_starvation',     ft:'Sched. starvation',       fs:'Low gain + heavy traffic'},
+  {id:'uplink_contamination',     ft:'UL contamination',        fs:'UL noise pre-sum'},
+];
+
+const stressDefs = [
+  {id:'hd_streaming',  ft:'HD streaming',   fs:'5 Mbps sustained DL',   profile:'hd_streaming'},
+  {id:'voice_call',    ft:'Voice call',      fs:'64K bidir, 160B pkts',  profile:'voice_call'},
+  {id:'video_call',    ft:'Video call',      fs:'1.5 Mbps bidir',        profile:'video_call'},
+  {id:'bulk_download', ft:'Bulk download',   fs:'Max rate DL saturate',  profile:'bulk_download'},
+  {id:'file_upload',   ft:'File upload',     fs:'Max rate UL saturate',  profile:'file_upload'},
+  {id:'ping_flood',    ft:'Ping flood',      fs:'1000 pkt/s, 64B',       profile:'ping_flood'},
+];
+
+// CNN mock data (Sprint 3 — not in backend yet, all 0 until model is live)
+const cnnDefault = {'Clean':0,'Co-ch interf.':0,'Cell edge':0,'Transport':0,'Link dropout':0,'Sched starv.':0,'UL contam.':0};
+const cnnMock = {
+  ue1: { g:{...cnnDefault} },
+  ue2: { g:{...cnnDefault} },
+  ue3: { g:{...cnnDefault} },
+};
+
+// =========================================================================
+// STATE (driven by WebSocket snapshots)
+// =========================================================================
+let snapshot = null;        // latest full snapshot from WS
+let selected = 'ue1';
+let sev = 'medium';
+let pFault = null;
+let pStress = null;
+let logs = [];
 let wsConnected = false;
-let snrHistory = { ue1: [], ue2: [], ue3: [] };
-const SNR_HISTORY_MAX = 60;
+let ws = null;
 
-// WS connection
+// =========================================================================
+// HELPERS
+// =========================================================================
+function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(API + path, opts).then(r => r.json()).catch(e => { console.error(path, e); return null; });
+}
+
+function ueData(id) {
+  if (!snapshot) return null;
+  return snapshot.ues.find(u => u.id === id);
+}
+
+function qOfUe(id) {
+  const u = ueData(id);
+  if (!u) return 'mid';
+  if (u.killed || u.status === 'Killed' || u.status === 'Detached') return 'dead';
+
+  // BLER is the strongest signal — nonzero BLER is rare and meaningful
+  const blerDesc = u.rf?.dl_bler?.descriptor;
+  if (blerDesc === 'High') return 'dead';
+  if (blerDesc === 'Fair') return 'mid';
+
+  // SNR — reacts to noise injection (the actual degradation lever)
+  const snr = u.rf?.dl_snr?.value;
+  if (snr != null && snr < 10) return 'dead';
+  if (snr != null && snr < 20) return 'mid';
+
+  // RSRP — reacts to gain changes
+  const rsrpDesc = u.rf?.rsrp?.descriptor;
+  if (rsrpDesc === 'Weak') return 'dead';
+  if (rsrpDesc === 'Fair') return 'mid';
+
+  // Gain fallback (no metrics yet)
+  const g = Math.min(u.gains?.dl ?? 1, u.gains?.ul ?? 1);
+  if (g <= 0.02) return 'dead';
+  if (g <= 0.4) return 'mid';
+
+  return 'good';
+}
+
+function fmtTime(ts) {
+  if (!ts) return '--:--:--';
+  const d = new Date(ts * 1000);
+  return d.toTimeString().slice(0, 8);
+}
+
+function fmtElapsed(s) {
+  if (!s && s !== 0) return '--';
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m}m ${Math.floor(s % 60)}s` : `${Math.floor(s)}s`;
+}
+
+function fmtNum(n) {
+  if (n == null) return '--';
+  return n.toLocaleString();
+}
+
+// =========================================================================
+// CONFIRM DIALOG
+// =========================================================================
+let confirmCb = null;
+function showConfirm(msg, cb) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOverlay').classList.add('show');
+  confirmCb = cb;
+  document.getElementById('confirmYes').onclick = () => { hideConfirm(); if (confirmCb) confirmCb(); };
+}
+function hideConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  confirmCb = null;
+}
+
+// =========================================================================
+// WEBSOCKET
+// =========================================================================
 function connectWS() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
     wsConnected = true;
-    document.getElementById('connDot').className = 'conn-dot live';
-    document.getElementById('connLabel').textContent = 'live';
+    document.querySelector('.sim-badge').style.color = 'var(--good)';
   };
 
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'snapshot') {
-      snapshot = msg.data;
-      // Track SNR history
-      for (const ue of snapshot.ues) {
-        const snr = ue.rf?.dl_snr?.value;
-        if (!snrHistory[ue.id]) snrHistory[ue.id] = [];
-        snrHistory[ue.id].push(snr || 0);
-        if (snrHistory[ue.id].length > SNR_HISTORY_MAX) snrHistory[ue.id].shift();
+  ws.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'snapshot') {
+        snapshot = msg.data;
+        renderFromSnapshot();
+      } else if (msg.type === 'event') {
+        const e = msg.data;
+        const levelColor = e.level === 'error' ? 'var(--dead)' : e.level === 'warn' ? 'var(--mid)' : 'var(--info)';
+        logs.push({ t: fmtTime(e.timestamp), c: levelColor, m: e.message });
+        if (logs.length > 200) logs = logs.slice(-200);
+        renderLogs();
+      } else if (msg.type === 'pong') {
+        // keepalive ack
       }
-      render(snapshot);
-    }
+    } catch (e) { console.error('WS parse error', e); }
   };
 
   ws.onclose = () => {
     wsConnected = false;
-    document.getElementById('connDot').className = 'conn-dot';
-    document.getElementById('connLabel').textContent = 'disconnected';
+    document.querySelector('.sim-badge').style.color = 'var(--dead)';
     setTimeout(connectWS, 2000);
   };
 
   ws.onerror = () => { ws.close(); };
 }
 
-// Fallback polling if WS fails
-async function poll() {
-  if (wsConnected) return;
-  try {
-    const res = await fetch('/api/status');
-    snapshot = await res.json();
-    render(snapshot);
-  } catch (e) {}
+// WS keepalive
+setInterval(() => { if (ws && ws.readyState === 1) ws.send('ping'); }, 10000);
+
+// =========================================================================
+// RENDER FROM SNAPSHOT
+// =========================================================================
+function renderFromSnapshot() {
+  if (!snapshot) return;
+
+  // Stat cards
+  document.getElementById('uesAttached').innerHTML =
+    `${snapshot.summary.ues_attached} <small>/ ${snapshot.summary.ues_total}</small>`;
+  document.getElementById('samplesRec').textContent = fmtNum(snapshot.sample_count);
+  document.getElementById('elapsed').textContent = fmtElapsed(snapshot.elapsed_s);
+
+  // Broker banner
+  document.getElementById('brokerBanner').classList.toggle('show', !snapshot.broker_connected);
+
+  // Radar colors + gain strip values
+  applyColors();
+  renderChips();
+  renderGainStrips();
+  renderActions();
+  renderCNN();
+  renderFaults();
+  renderFaultPreview();
 }
 
-function fmtElapsed(s) {
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
-  return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+function sel(id) {
+  selected = id;
+  document.querySelectorAll('.blip').forEach(b => b.classList.toggle('selected', b.id === 'blip-'+id));
+  document.querySelectorAll('.gain-strip').forEach(s => s.classList.toggle('selected', s.dataset.ue === id));
+  renderChips();
+  renderGainStrips();
+  renderActions();
+  renderCNN();
+  renderFaultPreview();
 }
 
-function fmtBrate(bps) {
-  if (!bps || bps <= 0) return '0';
-  if (bps >= 1e6) return (bps / 1e6).toFixed(1) + ' Mbps';
-  if (bps >= 1e3) return (bps / 1e3).toFixed(1) + ' kbps';
-  return bps.toFixed(0) + ' bps';
-}
-
-function statusCls(status) {
-  if (status === 'Online') return 'Online';
-  if (status === 'Idle') return 'Idle';
-  if (status === 'Detached') return 'Detached';
-  return 'NoData';
-}
-
-function render(snap) {
-  if (!snap) return;
-  renderStats(snap);
-  renderTopology(snap);
-  renderCards(snap);
-}
-
-function renderStats(snap) {
-  document.getElementById('statAttached').textContent = `${snap.summary.ues_attached} / ${snap.summary.ues_total}`;
-  document.getElementById('statOnline').textContent = `${snap.summary.ues_online} / ${snap.summary.ues_total}`;
-  document.getElementById('statSamples').textContent = snap.sample_count.toLocaleString();
-  document.getElementById('statElapsed').textContent = fmtElapsed(snap.elapsed_s);
-}
-
-function renderTopology(snap) {
-  const width = document.getElementById('topology').clientWidth;
-  const towerPx = { x: width * 0.5, y: 66 };
-  const brokerY = 150;
-  const nodeY = 250;
-  const positions = [0.18, 0.5, 0.82];
-
-  // UE nodes
-  const nodesEl = document.getElementById('ueNodes');
-  nodesEl.innerHTML = '';
-  snap.ues.forEach((ue, i) => {
-    const cls = statusCls(ue.status);
-    const div = document.createElement('div');
-    div.className = 'ue-node';
-    div.style.left = `calc(${positions[i] * 100}% - 65px)`;
-    div.innerHTML = `
-      <div class="ue-icon-wrap ${cls}">${PHONE_SVG}</div>
-      <div class="ue-label">${ue.label}</div>
-      <div class="ue-ip">${ue.ip || '—'}</div>
-      <div class="ue-status-pill ${cls}">${ue.status}</div>
-    `;
-    nodesEl.appendChild(div);
-  });
-
-  // Links: tower → broker → UEs
-  const svg = document.getElementById('linksSvg');
-  svg.innerHTML = '';
-
-  // Tower to broker (always teal if enb is up)
-  const brokerPx = { x: width * 0.5, y: brokerY };
-  const tbLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  tbLine.setAttribute('x1', towerPx.x); tbLine.setAttribute('y1', towerPx.y);
-  tbLine.setAttribute('x2', brokerPx.x); tbLine.setAttribute('y2', brokerPx.y);
-  tbLine.setAttribute('class', 'link-line Online');
-  svg.appendChild(tbLine);
-
-  // Broker to each UE
-  snap.ues.forEach((ue, i) => {
-    const cls = statusCls(ue.status);
-    const nodePx = { x: width * positions[i], y: nodeY };
-    const midX = (brokerPx.x + nodePx.x) / 2;
-    const midY = (brokerPx.y + nodePx.y) / 2 - 15;
-    const d = `M ${brokerPx.x} ${brokerPx.y} Q ${midX} ${midY} ${nodePx.x} ${nodePx.y}`;
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('class', `link-line ${cls}`);
-    svg.appendChild(path);
-
-    if (cls === 'Online') {
-      const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      pulse.setAttribute('r', '3.5');
-      pulse.setAttribute('class', 'link-pulse active');
-      pulse.style.offsetPath = `path('${d}')`;
-      pulse.style.offsetRotate = '0deg';
-      svg.appendChild(pulse);
+// =========================================================================
+// RADAR COLORS
+// =========================================================================
+function applyColors() {
+  ['ue1','ue2','ue3'].forEach(id => {
+    const q = qOfUe(id), col = C[q];
+    ['trace-','pulse-','node-','tag-'].forEach(p => {
+      const el = document.getElementById(p+id);
+      if (el) { if (p==='pulse-') el.style.fill=col; else el.style.stroke=col; if(p==='tag-') el.style.fill=col; }
+    });
+    // Update RSRP label on blip
+    const u = ueData(id);
+    const sub = document.querySelector('#blip-'+id+' .blip-sub');
+    if (sub && u) {
+      const rsrp = u.rf?.rsrp?.value;
+      sub.textContent = rsrp != null ? `-${rsrp}dBm` : '--';
     }
   });
 }
 
-function metricRow(label, m) {
-  if (!m || m.value === null || m.value === undefined) return '';
-  const val = typeof m.value === 'number' ? (m.value >= 1000 ? fmtBrate(m.value) : m.value) : m.value;
-  const showUnit = typeof m.value === 'number' && m.value < 1000 && m.unit;
-  const descHtml = m.descriptor
-    ? `<span class="metric-desc desc-${m.descriptor}">${m.descriptor}</span>`
-    : '';
-  return `
-    <div class="metric-row">
-      <span class="metric-name">${label}</span>
-      <span class="metric-val">
-        <span class="metric-num">${val}</span>
-        ${showUnit ? `<span class="metric-unit">${m.unit}</span>` : ''}
-        ${descHtml}
-      </span>
-    </div>`;
-}
-
-function sparklineSVG(data, color) {
-  if (!data || data.length < 2) return '';
-  const w = 260, h = 36;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
-  const range = max - min || 1;
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
-    return `${x},${y}`;
+// =========================================================================
+// CHIPS (UE selectors)
+// =========================================================================
+function renderChips() {
+  ['cnnChips','faultChips','stressChips'].forEach(rid => {
+    const row = document.getElementById(rid);
+    row.innerHTML = '';
+    ['ue1','ue2','ue3'].forEach(id => {
+      const q = qOfUe(id), col = C[q];
+      const el = document.createElement('div');
+      el.className = 'chip';
+      el.textContent = id.toUpperCase();
+      el.style.color = id===selected ? col : 'var(--text-faint)';
+      el.style.borderColor = id===selected ? col : 'var(--grat)';
+      el.onclick = () => sel(id);
+      row.appendChild(el);
+    });
   });
-  return `<svg class="sparkline-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-    <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
-  </svg>`;
 }
 
-function renderCards(snap) {
-  const container = document.getElementById('cards');
-  container.innerHTML = '';
+// =========================================================================
+// GAIN SLIDERS — read from snapshot, write via API
+// =========================================================================
+function renderGainStrips() {
+  const el = document.getElementById('gainStrips');
+  el.innerHTML = '';
+  ['ue1','ue2','ue3'].forEach(id => {
+    const u = ueData(id);
+    const dl = u?.gains?.dl ?? 1.0;
+    const ul = u?.gains?.ul ?? 1.0;
+    const q = qOfUe(id), col = C[q];
+    const status = u?.status ?? 'No Data';
+    const strip = document.createElement('div');
+    strip.className = 'gain-strip' + (id===selected?' selected':'');
+    strip.dataset.ue = id;
+    strip.onclick = (e) => { if(e.target.tagName!=='INPUT' && !e.target.classList.contains('inc-btn') && !e.target.closest('.detail-toggle')) sel(id); };
+    strip.style.borderLeftColor = col;
 
-  snap.ues.forEach(ue => {
-    const cls = statusCls(ue.status);
-    const card = document.createElement('div');
-    card.className = 'card';
+    const rf = u?.rf;
+    const tp = u?.throughput;
+    const pr = u?.process;
+    const gn = u?.gains;
 
-    let body = '';
-
-    if (ue.status === 'No Data') {
-      body = '<div class="empty-metrics">No metrics data — UE not started or CSV not found</div>';
-    } else {
-      // RF metrics
-      if (ue.rf) {
-        body += '<div class="section-label">RF Link</div>';
-        body += metricRow('RSRP', ue.rf.rsrp);
-        body += metricRow('DL SNR', ue.rf.dl_snr);
-        body += metricRow('DL MCS', ue.rf.dl_mcs);
-        body += metricRow('UL MCS', ue.rf.ul_mcs);
-        body += metricRow('DL BLER', ue.rf.dl_bler);
-        body += metricRow('UL BLER', ue.rf.ul_bler);
-        body += metricRow('CFO', ue.rf.cfo);
-      }
-
-      // Throughput
-      if (ue.throughput) {
-        body += '<div class="section-label">Throughput</div>';
-        body += metricRow('Downlink', ue.throughput.dl_brate);
-        body += metricRow('Uplink', ue.throughput.ul_brate);
-      }
-
-      // Process
-      if (ue.process) {
-        body += '<div class="section-label">System</div>';
-        body += metricRow('CPU (per-core avg)', ue.process.cpu_normalized);
-        body += metricRow('CPU (system total)', ue.process.cpu_total);
-        body += metricRow('Process Memory', ue.process.proc_mem_mb);
-        body += metricRow('System Memory', ue.process.sys_mem);
-      }
-
-      // SNR sparkline
-      const hist = snrHistory[ue.id];
-      if (hist && hist.length > 2) {
-        body += `
-          <div class="sparkline-container">
-            <div class="sparkline-label">DL SNR (last ${hist.length}s)</div>
-            ${sparklineSVG(hist, '#5EEAD4')}
-          </div>`;
-      }
-    }
-
-    card.innerHTML = `
-      <div class="card-head">
-        <div>
-          <div class="card-title">${ue.label}</div>
-          <div class="card-sub">IMSI ${ue.imsi} · ${ue.ip || '—'}</div>
-        </div>
-        <span class="ue-status-pill ${cls}">${ue.status}</span>
+    strip.innerHTML = `
+      <div class="gain-head"><span class="gain-name">${id.toUpperCase()}</span><span class="gain-status" style="color:${col}">${status}</span></div>
+      <div class="slider-row">
+        <span class="slider-label">DL</span>
+        <div class="inc-btn" onclick="event.stopPropagation();incGain('${id}','dl',-0.1)">−</div>
+        <input type="range" min="0" max="1" step="0.01" value="${dl}" oninput="sendGain('${id}','dl',this.value)">
+        <div class="inc-btn" onclick="event.stopPropagation();incGain('${id}','dl',0.1)">+</div>
+        <span class="slider-val">${dl.toFixed(1)}</span>
       </div>
-      ${body}
-    `;
-    container.appendChild(card);
+      <div class="slider-row">
+        <span class="slider-label">UL</span>
+        <div class="inc-btn" onclick="event.stopPropagation();incGain('${id}','ul',-0.1)">−</div>
+        <input type="range" min="0" max="1" step="0.01" value="${ul}" oninput="sendGain('${id}','ul',this.value)">
+        <div class="inc-btn" onclick="event.stopPropagation();incGain('${id}','ul',0.1)">+</div>
+        <span class="slider-val">${ul.toFixed(1)}</span>
+      </div>
+      <div class="detail-toggle" onclick="event.stopPropagation();toggleDetail('${id}')">
+        <span class="arrow" id="arrow-${id}">▼</span> metrics
+      </div>
+      <div class="detail-panel" id="detail-${id}">
+        ${detailRow('RSRP', fmtMetric(rf?.rsrp), badgeFor(rf?.rsrp?.descriptor))}
+        ${detailRow('SNR', fmtMetric(rf?.dl_snr), badgeFor(rf?.dl_snr?.descriptor))}
+        ${detailRow('DL MCS', fmtVal(rf?.dl_mcs?.value), '')}
+        ${detailRow('UL MCS', fmtVal(rf?.ul_mcs?.value), '')}
+        ${detailRow('DL BLER', fmtPct(rf?.dl_bler?.value), badgeFor(rf?.dl_bler?.descriptor))}
+        ${detailRow('UL BLER', fmtPct(rf?.ul_bler?.value), badgeFor(rf?.ul_bler?.descriptor))}
+        ${detailRow('DL throughput', fmtBps(tp?.dl_brate?.value), '')}
+        ${detailRow('UL throughput', fmtBps(tp?.ul_brate?.value), '')}
+        ${detailRow('DL noise σ', fmtVal(gn?.dl_noise), '')}
+        ${detailRow('UL noise σ', fmtVal(gn?.ul_noise), '')}
+        ${detailRow('Backlog', fmtVal(gn?.backlog), '')}
+        ${detailRow('Late dropped', fmtVal(gn?.late_dropped), '')}
+        ${detailRow('CPU', fmtPct(pr?.cpu_avg?.value), '')}
+        ${detailRow('Memory', fmtVal(pr?.proc_mem_kb?.value) + ' KB', '')}
+      </div>`;
+    el.appendChild(strip);
+
+    // Preserve open state
+    if (openDetails[id]) {
+      document.getElementById('detail-' + id)?.classList.add('open');
+      document.getElementById('arrow-' + id)?.classList.add('open');
+    }
   });
 }
 
-// Export
-document.getElementById('exportBtn').addEventListener('click', async () => {
-  try {
-    const res = await fetch('/api/export');
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cell-metrics-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    document.getElementById('exportStatus').textContent = 'Exported ✓';
-    setTimeout(() => { document.getElementById('exportStatus').textContent = ''; }, 3000);
-  } catch (e) {
-    document.getElementById('exportStatus').textContent = 'Export failed';
-  }
-});
+// Detail panel helpers
+const openDetails = {};
+function toggleDetail(id) {
+  openDetails[id] = !openDetails[id];
+  document.getElementById('detail-' + id)?.classList.toggle('open');
+  document.getElementById('arrow-' + id)?.classList.toggle('open');
+}
 
-// Init
+function detailRow(key, val, badge) {
+  return `<div class="detail-row"><span class="detail-key">${key}</span><span class="detail-val">${val}${badge}</span></div>`;
+}
+
+function badgeFor(desc) {
+  if (!desc) return '';
+  const cls = (desc === 'Excellent' || desc === 'Good' || desc === 'Clean') ? 'good'
+            : (desc === 'Fair' || desc === 'Low') ? 'mid' : 'bad';
+  return ` <span class="detail-badge ${cls}">${desc}</span>`;
+}
+
+function fmtMetric(m) {
+  if (!m || m.value == null) return '--';
+  return `${Math.round(m.value)} ${m.unit || ''}`.trim();
+}
+
+function fmtVal(v) { return v != null ? Math.round(v) : '--'; }
+function fmtPct(v) { return v != null ? v.toFixed(1) + '%' : '--'; }
+function fmtBps(v) {
+  if (v == null || v <= 0) return '0 bps';
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + ' Mbps';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + ' kbps';
+  return Math.round(v) + ' bps';
+}
+
+let gainDebounce = {};
+function sendGain(ue, dir, val) {
+  const v = Math.round(parseFloat(val) * 100) / 100;
+  clearTimeout(gainDebounce[ue+dir]);
+  gainDebounce[ue+dir] = setTimeout(() => {
+    api('POST', '/api/gain', { ue, direction: dir, value: v });
+  }, 80);
+}
+
+function incGain(ue, dir, delta) {
+  const u = ueData(ue);
+  const cur = dir === 'dl' ? (u?.gains?.dl ?? 1) : (u?.gains?.ul ?? 1);
+  const v = Math.round(Math.max(0, Math.min(1, cur + delta)) * 100) / 100;
+  api('POST', '/api/gain', { ue, direction: dir, value: v });
+  addLog('var(--info)', `${ue.toUpperCase()} ${dir.toUpperCase()} gain → ${v.toFixed(1)}`);
+}
+
+// =========================================================================
+// UE ACTIONS — kill/revive via API with confirm
+// =========================================================================
+function renderActions() {
+  const el = document.getElementById('actionStrips');
+  el.innerHTML = '';
+  ['ue1','ue2','ue3'].forEach(id => {
+    const u = ueData(id);
+    const killed = u?.killed || false;
+    const strip = document.createElement('div');
+    strip.className = 'action-strip';
+
+    strip.innerHTML = `
+      <div class="action-strip-head">${id.toUpperCase()}${killed ? ' <span style="color:var(--dead);font-size:7px">KILLED</span>' : ''}</div>
+      <div class="action-btns">
+        <div class="abtn kill" onclick="doKill('${id}')">Kill</div>
+        <div class="abtn revive" onclick="doRevive('${id}')">Revive</div>
+      </div>`;
+    el.appendChild(strip);
+  });
+}
+
+function doKill(id) {
+  showConfirm(`Kill ${id.toUpperCase()}? This sets both DL/UL gain to zero.`, () => {
+    api('POST', '/api/kill', { ue: id, confirm: true });
+    addLog('var(--dead)', `${id.toUpperCase()} killed — gain→0 both DL/UL`);
+  });
+}
+
+function doRevive(id) {
+  api('POST', '/api/revive', { ue: id });
+  addLog('var(--good)', `${id.toUpperCase()} revived — gains restored to 1.0`);
+}
+
+// =========================================================================
+// CNN CLASSIFIER (mock until Sprint 3)
+// =========================================================================
+function renderCNN() {
+  const q = qOfUe(selected), col = C[q];
+  document.getElementById('cnnLabel').textContent = selected.toUpperCase();
+  document.getElementById('cnnLabel').style.color = col;
+  const rows = document.getElementById('cnnRows');
+  rows.innerHTML = '';
+
+  // Use snapshot CNN data if available, else mock
+  const u = ueData(selected);
+  const cnnSource = u?.cnn?.classifications || cnnMock[selected]?.g;
+  if (!cnnSource) return;
+
+  const sorted = Object.entries(cnnSource).sort((a,b) => b[1] - a[1]);
+  const topKey = sorted[0][0];
+  const topPct = sorted[0][1];
+
+  sorted.forEach(([label, pct]) => {
+    const isTop = label === topKey;
+    const displayPct = typeof pct === 'number' && pct <= 1 ? Math.round(pct * 100) : Math.round(pct);
+    const row = document.createElement('div');
+    row.className = 'cnn-row';
+    row.innerHTML = `<span class="cnn-label">${label}</span><div class="cnn-bar-track"><div class="cnn-bar-fill" style="width:${displayPct}%;background:${isTop?col:'var(--grat)'}"></div></div><span class="cnn-pct">${displayPct}%</span>`;
+    rows.appendChild(row);
+  });
+
+  const v = document.getElementById('cnnVerdict');
+  const bg = q==='good'?'var(--good-dim)':q==='mid'?'var(--mid-dim)':'var(--dead-dim)';
+  const mark = q==='good'?'✓ ':q==='mid'?'⚠ ':'✕ ';
+  const topDisp = typeof topPct === 'number' && topPct <= 1 && topPct > 0 ? Math.round(topPct * 100) : Math.round(topPct);
+  let verdictText;
+  if (topDisp === 0) {
+    verdictText = 'CNN classifier inactive — awaiting model';
+  } else if (q === 'good') {
+    verdictText = `Clean baseline — no fault detected`;
+  } else if (q === 'mid') {
+    verdictText = `Degraded — likely ${topKey.toLowerCase()} (${topDisp}%)`;
+  } else {
+    verdictText = `Critical — ${topKey.toLowerCase()} (${topDisp}%)`;
+  }
+  v.style.color = topDisp === 0 ? 'var(--text-faint)' : col;
+  v.style.borderLeftColor = topDisp === 0 ? 'var(--grat)' : col;
+  v.style.background = topDisp === 0 ? 'var(--panel-2)' : bg;
+  v.textContent = mark + verdictText;
+}
+
+// =========================================================================
+// EVENT LOG — from backend WS events, backfilled on load
+// =========================================================================
+function addLog(color, msg) {
+  logs.push({ t: new Date().toTimeString().slice(0,8), c: color, m: msg });
+  if (logs.length > 200) logs = logs.slice(-200);
+  renderLogs();
+}
+
+function renderLogs() {
+  const el = document.getElementById('logEl');
+  el.innerHTML = '';
+  logs.slice(-50).reverse().forEach(l => {
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML = `<span class="log-time">${l.t}</span><span class="log-msg" style="color:${l.c}">${l.m}</span>`;
+    el.appendChild(row);
+  });
+}
+
+// backfillEvents: placeholder for when backend adds GET /api/events
+async function backfillEvents() {
+  // Backend doesn't emit events yet. When it does, uncomment:
+  // const res = await api('GET', '/api/events?limit=100');
+  // if (res?.events) {
+  //   logs = res.events.map(e => ({
+  //     t: fmtTime(e.timestamp),
+  //     c: e.level === 'error' ? 'var(--dead)' : e.level === 'warn' ? 'var(--mid)' : 'var(--info)',
+  //     m: e.message
+  //   }));
+  //   renderLogs();
+  // }
+}
+
+// =========================================================================
+// SEVERITY
+// =========================================================================
+function renderSev() {
+  const row = document.getElementById('sevRow');
+  row.innerHTML = '';
+  ['low','medium','high'].forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'sev'+(s===sev?' active':'');
+    el.textContent = s;
+    el.onclick = () => { sev=s; renderSev(); renderFaultPreview(); };
+    row.appendChild(el);
+  });
+}
+
+// =========================================================================
+// FAULT INJECTION — fires POST /api/fault
+// =========================================================================
+function renderFaults() {
+  const el = document.getElementById('faultGrid');
+  el.innerHTML = '';
+  // Check which UE has an active fault from the snapshot
+  const activeFault = snapshot?.active_faults?.[selected];
+
+  faultDefs.forEach(f => {
+    const isActive = activeFault?.type === f.id;
+    const btn = document.createElement('div');
+    btn.className = 'six-btn' + (pFault===f.id ? ' active' : '') + (isActive ? ' active' : '');
+    btn.innerHTML = `<div class="ft">${f.ft}${isActive ? '<span class="fault-active-badge">active</span>' : ''}</div><div class="fs">${f.fs}</div>`;
+    btn.onclick = () => {
+      pFault = f.id;
+      api('POST', '/api/fault', { ue: selected, fault_type: f.id, severity: sev });
+      addLog('var(--mid)', `Fault injected: ${f.ft} (${sev}) on ${selected.toUpperCase()}`);
+      renderFaults();
+      renderFaultPreview();
+    };
+    el.appendChild(btn);
+  });
+}
+
+function renderFaultPreview() {
+  const el = document.getElementById('faultPreview');
+  const activeFault = snapshot?.active_faults?.[selected];
+  if (activeFault) {
+    el.innerHTML = `Active: <b>${activeFault.type}</b> (${activeFault.severity}) on <b>${selected}</b>`;
+    return;
+  }
+  if (!pFault) { el.innerHTML = 'select a fault type above'; return; }
+  el.innerHTML = `POST /api/fault { ue: "<b>${selected}</b>", fault_type: "<b>${pFault}</b>", severity: "<b>${sev}</b>" }`;
+}
+
+function clearFault() {
+  api('POST', '/api/fault/clear', { ue: selected });
+  addLog('var(--info)', `Fault cleared on ${selected.toUpperCase()}`);
+  pFault = null;
+  renderFaults();
+  renderFaultPreview();
+}
+
+// =========================================================================
+// STRESS INJECTION — fires POST /api/traffic
+// =========================================================================
+function renderStress() {
+  const el = document.getElementById('stressGrid');
+  el.innerHTML = '';
+  const u = ueData(selected);
+  const activeProfile = u?.traffic?.profile;
+
+  stressDefs.forEach(s => {
+    const isActive = activeProfile === s.profile;
+    const btn = document.createElement('div');
+    btn.className = 'six-btn' + (pStress===s.id ? ' active' : '') + (isActive ? ' active' : '');
+    btn.innerHTML = `<div class="ft">${s.ft}${isActive ? '<span class="fault-active-badge">running</span>' : ''}</div><div class="fs">${s.fs}</div>`;
+    btn.onclick = () => {
+      pStress = s.id;
+      api('POST', '/api/traffic', { ue: selected, action: 'start', profile: s.profile });
+      addLog('var(--info)', `Stress started: ${s.ft} on ${selected.toUpperCase()}`);
+      renderStress();
+    };
+    el.appendChild(btn);
+  });
+}
+
+function clearStress() {
+  api('POST', '/api/traffic', { ue: selected, action: 'stop' });
+  addLog('var(--info)', `Stress stopped on ${selected.toUpperCase()}`);
+  pStress = null;
+  renderStress();
+}
+
+// =========================================================================
+// EXPORT — triggers browser download (needs GET /api/export in backend)
+// =========================================================================
+function doExport() {
+  fetch(API + '/api/export')
+    .then(r => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    })
+    .then(data => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lte_export_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addLog('var(--info)', `Dataset exported — ${Object.keys(data.ues || {}).length} UEs, JSON`);
+    })
+    .catch(e => console.error('Export failed — backend may not have /api/export yet', e));
+}
+
+// =========================================================================
+// RESET — POST /api/reset
+// =========================================================================
+function doReset() {
+  showConfirm('Reset the entire cell? All gains→1.0, all noise→0, faults cleared, stress stopped.', () => {
+    api('POST', '/api/reset');
+    addLog('var(--good)', 'Cell reset — all gains→1.0, noise→0, faults cleared, stress stopped');
+    pFault = null;
+    pStress = null;
+    sev = 'medium';
+    renderSev();
+  });
+}
+
+// =========================================================================
+// INIT — render all static UI immediately, then wire live data
+// =========================================================================
+logs = [
+  { t: new Date().toTimeString().slice(0,8), c: 'var(--text-faint)', m: 'Frontend loaded — waiting for backend connection' }
+];
+
+renderSev();
+renderChips();
+renderGainStrips();
+renderActions();
+renderCNN();
+renderFaults();
+renderFaultPreview();
+renderStress();
+renderLogs();
+backfillEvents();
 connectWS();
-setInterval(poll, 3000);
+
+// Initial status fetch (in case WS hasn't connected yet)
+api('GET', '/api/status').then(data => {
+  if (data) { snapshot = data; renderFromSnapshot(); }
+});
 </script>
 </body>
 </html>

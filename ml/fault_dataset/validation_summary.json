@@ -1,0 +1,1245 @@
+{
+  "summary": {
+    "total_sessions_in_manifest": 54,
+    "expected_combos": 54,
+    "missing_combos": [],
+    "sessions_with_structural_issues": 0,
+    "sessions_with_effect_check_failures": 12,
+    "sessions_with_missing_files": 0,
+    "total_samples_by_phase": {
+      "clean": 3230,
+      "onset": 270,
+      "active": 2475,
+      "recovery": 3240
+    }
+  },
+  "results": [
+    {
+      "session_id": "transport_stall__low__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 91929.0,
+        "active_brate": 814.0,
+        "ratio": 0.009,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "transport_stall__medium__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 91878.0,
+        "active_brate": 810.7,
+        "ratio": 0.009,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__low__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 25.0,
+        "delta": 115.0,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__low__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 25.0,
+        "delta": 115.0,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__low__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 25.0,
+        "delta": 115.0,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__medium__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 16.0,
+        "delta": 124.0,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__medium__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 16.0,
+        "delta": 124.0,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__medium__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 16.0,
+        "delta": 124.0,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__high__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 7.4,
+        "delta": 132.6,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__high__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 7.4,
+        "delta": 132.6,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "co_channel_interference__high__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 7.4,
+        "delta": 132.6,
+        "expected": "decrease >= 2.0 dB"
+      }
+    },
+    {
+      "session_id": "bler_degradation__low__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 14.2,
+        "delta": 125.8,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__low__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 14.27,
+        "delta": 125.73,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__low__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 14.31,
+        "delta": 125.69,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__medium__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 11.08,
+        "delta": 128.92,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__medium__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 11.03,
+        "delta": 128.97,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__medium__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 11.04,
+        "delta": 128.96,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__high__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 70,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 7.48,
+        "delta": 132.52,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__high__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 70,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 7.48,
+        "delta": 132.52,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "bler_degradation__high__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 70,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 7.51,
+        "delta": 132.49,
+        "expected": "decrease >= 3.0 dB (ramp average, so a milder bar than CCI's step change)"
+      }
+    },
+    {
+      "session_id": "transport_stall__low__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 91642.7,
+        "active_brate": 889.7,
+        "ratio": 0.01,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "transport_stall__low__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 92814.3,
+        "active_brate": 811.1,
+        "ratio": 0.009,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "transport_stall__medium__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 91696.9,
+        "active_brate": 809.3,
+        "ratio": 0.009,
+        "snr_clean": 140.56666666666666,
+        "snr_active": 141.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "transport_stall__high__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 91386.4,
+        "active_brate": 851.1,
+        "ratio": 0.009,
+        "snr_clean": 140.56666666666666,
+        "snr_active": 141.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "link_dropout__low__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.0,
+        "active": 5.6,
+        "delta": 134.4,
+        "expected": "decrease >= 5.0 dB (severe noise, low/medium severity)"
+      }
+    },
+    {
+      "session_id": "link_dropout__low__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 140.02,
+        "active": 5.6,
+        "delta": 134.42,
+        "expected": "decrease >= 5.0 dB (severe noise, low/medium severity)"
+      }
+    },
+    {
+      "session_id": "link_dropout__low__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 141.0,
+        "active": 5.6,
+        "delta": 135.4,
+        "expected": "decrease >= 5.0 dB (severe noise, low/medium severity)"
+      }
+    },
+    {
+      "session_id": "link_dropout__medium__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 141.0,
+        "active": 0.0,
+        "delta": 141.0,
+        "expected": "decrease >= 5.0 dB (severe noise, low/medium severity)"
+      }
+    },
+    {
+      "session_id": "link_dropout__medium__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 141.0,
+        "active": 0.0,
+        "delta": 141.0,
+        "expected": "decrease >= 5.0 dB (severe noise, low/medium severity)"
+      }
+    },
+    {
+      "session_id": "link_dropout__medium__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 50,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_snr",
+        "clean": 141.0,
+        "active": 0.0,
+        "delta": 141.0,
+        "expected": "decrease >= 5.0 dB (severe noise, low/medium severity)"
+      }
+    },
+    {
+      "session_id": "link_dropout__high__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "status",
+        "killed_fraction": 1.0,
+        "expected": "target UE Killed/Detached for >=50% of active phase"
+      }
+    },
+    {
+      "session_id": "link_dropout__high__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "status",
+        "killed_fraction": 1.0,
+        "expected": "target UE Killed/Detached for >=50% of active phase"
+      }
+    },
+    {
+      "session_id": "link_dropout__high__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "status",
+        "killed_fraction": 1.0,
+        "expected": "target UE Killed/Detached for >=50% of active phase"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__low__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4513.0,
+        "active_ul_brate": 4559.4,
+        "ul_ratio": 1.01,
+        "dl_snr_delta": 125.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__low__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4557.6,
+        "active_ul_brate": 4567.9,
+        "ul_ratio": 1.0,
+        "dl_snr_delta": 125.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__low__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4468.6,
+        "active_ul_brate": 4533.1,
+        "ul_ratio": 1.01,
+        "dl_snr_delta": 125.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__medium__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4560.8,
+        "active_ul_brate": 4724.2,
+        "ul_ratio": 1.04,
+        "dl_snr_delta": 130.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__medium__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4622.3,
+        "active_ul_brate": 4559.6,
+        "ul_ratio": 0.99,
+        "dl_snr_delta": 130.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__medium__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4533.5,
+        "active_ul_brate": 4543.5,
+        "ul_ratio": 1.0,
+        "dl_snr_delta": 130.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__high__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4556.0,
+        "active_ul_brate": 4565.8,
+        "ul_ratio": 1.0,
+        "dl_snr_delta": 130.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__high__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4556.6,
+        "active_ul_brate": 4662.6,
+        "ul_ratio": 1.02,
+        "dl_snr_delta": 130.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "scheduler_starvation__high__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 55,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_brate (heavy traffic) + dl_snr (noise)",
+        "clean_ul_brate": 4556.2,
+        "active_ul_brate": 4528.3,
+        "ul_ratio": 0.99,
+        "dl_snr_delta": 130.0,
+        "expected": "ul_brate at least doubles (heavy traffic actually flowing) AND dl_snr drops >= 2dB (noise applied)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__low__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 0.0,
+        "target_delta": 0.0,
+        "cross_ue_effect_seen": false,
+        "cross_ue_detail": {
+          "ue2": {
+            "clean": 0.0,
+            "active": 0.0,
+            "delta": 0.0
+          },
+          "ue3": {
+            "clean": 0.0,
+            "active": 0.0,
+            "delta": 0.0
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__low__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 0.0,
+        "target_delta": 0.0,
+        "cross_ue_effect_seen": false,
+        "cross_ue_detail": {
+          "ue1": {
+            "clean": 0.0,
+            "active": 0.0,
+            "delta": 0.0
+          },
+          "ue3": {
+            "clean": 0.0,
+            "active": 0.0,
+            "delta": 0.0
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__low__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": false,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 0.0,
+        "target_delta": 0.0,
+        "cross_ue_effect_seen": false,
+        "cross_ue_detail": {
+          "ue1": {
+            "clean": 0.0,
+            "active": 0.0,
+            "delta": 0.0
+          },
+          "ue2": {
+            "clean": 0.25,
+            "active": 0.0,
+            "delta": -0.25
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__medium__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 6.0,
+        "target_delta": 6.0,
+        "cross_ue_effect_seen": true,
+        "cross_ue_detail": {
+          "ue2": {
+            "clean": 0.0,
+            "active": 5.85,
+            "delta": 5.85
+          },
+          "ue3": {
+            "clean": 0.0,
+            "active": 6.65,
+            "delta": 6.65
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__medium__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 6.025,
+        "target_delta": 6.03,
+        "cross_ue_effect_seen": true,
+        "cross_ue_detail": {
+          "ue1": {
+            "clean": 0.0,
+            "active": 6.375,
+            "delta": 6.375
+          },
+          "ue3": {
+            "clean": 0.0,
+            "active": 6.375,
+            "delta": 6.375
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__medium__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 6.05,
+        "target_delta": 6.05,
+        "cross_ue_effect_seen": true,
+        "cross_ue_detail": {
+          "ue1": {
+            "clean": 0.0,
+            "active": 6.25,
+            "delta": 6.25
+          },
+          "ue2": {
+            "clean": 0.0,
+            "active": 6.05,
+            "delta": 6.05
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__high__ue1",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 5.045,
+        "target_delta": 5.04,
+        "cross_ue_effect_seen": true,
+        "cross_ue_detail": {
+          "ue2": {
+            "clean": 0.0,
+            "active": 3.2675,
+            "delta": 3.2675
+          },
+          "ue3": {
+            "clean": 0.0,
+            "active": 3.26,
+            "delta": 3.26
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__high__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 3.19,
+        "target_delta": 3.19,
+        "cross_ue_effect_seen": true,
+        "cross_ue_detail": {
+          "ue1": {
+            "clean": 0.0,
+            "active": 3.1375,
+            "delta": 3.1375
+          },
+          "ue3": {
+            "clean": 0.0,
+            "active": 3.4,
+            "delta": 3.4
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "uplink_contamination__high__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "ul_bler",
+        "target_clean": 0.0,
+        "target_active": 3.11,
+        "target_delta": 3.11,
+        "cross_ue_effect_seen": true,
+        "cross_ue_detail": {
+          "ue1": {
+            "clean": 0.0,
+            "active": 3.24,
+            "delta": 3.24
+          },
+          "ue2": {
+            "clean": 0.0,
+            "active": 3.2425,
+            "delta": 3.2425
+          }
+        },
+        "expected": "target UE ul_bler increases >= 1%; cross_ue_effect_seen flags whether the composite-signal contamination on OTHER UEs also showed up (bonus finding, not required for pass/fail)"
+      }
+    },
+    {
+      "session_id": "transport_stall__medium__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 93074.7,
+        "active_brate": 813.3,
+        "ratio": 0.009,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "transport_stall__high__ue2",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 92767.3,
+        "active_brate": 811.1,
+        "ratio": 0.009,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    },
+    {
+      "session_id": "transport_stall__high__ue3",
+      "structural": {
+        "issues": [],
+        "phase_counts": {
+          "clean": 60,
+          "onset": 5,
+          "active": 40,
+          "recovery": 60
+        }
+      },
+      "effect": {
+        "ok": true,
+        "metric": "dl_brate + dl_snr",
+        "clean_brate": 90988.3,
+        "active_brate": 802.4,
+        "ratio": 0.009,
+        "snr_clean": 140.0,
+        "snr_active": 140.0,
+        "snr_stayed_flat": true,
+        "expected": "dl_brate drops below 50% of clean AND dl_snr stays within 3dB (clean-RF signature)"
+      }
+    }
+  ]
+}

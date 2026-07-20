@@ -420,6 +420,18 @@ async def get_history(ue_id: str, limit: int = 60):
     hist = metrics_history[ue_id][-limit:]
     return {"ue_id": ue_id, "count": len(hist), "metrics": hist}
 
+@app.get("/api/export")
+async def export_dataset():
+    """Export full metric history as a JSON dataset for ML training."""
+    return {
+        "exported_at": time.time(),
+        "enb": ENB_CONFIG,
+        "ues": {
+            ue["id"]: metrics_history[ue["id"]]
+            for ue in UE_CONFIGS
+        },
+    }
+
 @app.get("/api/broker/status")
 async def broker_status_raw():
     return broker.get_status()

@@ -1,0 +1,677 @@
+{
+  "ue": "ue3",
+  "steps": [
+    {
+      "gain": 1.0,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 60.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 60.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 60.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 60.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 60.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 60.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.5,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 54.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 54.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 54.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 54.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 54.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 54.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.3,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 49.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 49.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 49.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 49.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 49.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 49.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.2,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 46.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 142.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 46.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 46.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 46.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 46.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 46.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.15,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 43.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 43.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 43.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 43.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 43.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 43.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.1,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 40.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 142.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 40.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 40.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 40.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 40.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 40.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.07,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 37.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 142.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 37.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 37.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 37.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 37.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 37.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.05,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 34.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 142.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 34.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 34.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 34.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 34.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 34.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.04,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 32.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 32.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 32.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 32.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 32.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 32.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.03,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 29.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 142.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 29.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 29.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 29.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 29.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 29.0,
+          "dl_snr": 142.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    },
+    {
+      "gain": 0.02,
+      "attached_fraction": 1.0,
+      "rsrp": {
+        "mean": 26.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_snr": {
+        "mean": 141.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_bler": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "dl_mcs": {
+        "mean": 20.0,
+        "std": 0.0,
+        "n": 5
+      },
+      "raw_samples": [
+        {
+          "status": "Online",
+          "rsrp": 26.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 26.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 26.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 26.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        },
+        {
+          "status": "Online",
+          "rsrp": 26.0,
+          "dl_snr": 141.0,
+          "dl_bler": 0.0,
+          "dl_mcs": 20.0
+        }
+      ]
+    }
+  ],
+  "empirical_decode_floor_gain": 0.02
+}
